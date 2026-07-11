@@ -1,10 +1,9 @@
 {
-  "projectId": "medtrips-bd6b4",
-  "appId": "1:745397872995:web:2894528e16c13892338b56",
-  "apiKey": "AIzaSyCXuKtWEgYRUl1n0SAvpNTmIUv_iMN0ga4",
-  "authDomain": "medtrips-bd6b4.firebaseapp.com",
+  "projectId": "medtrips-ed62b",
+  "appId": "1:35455109467:web:3e0189e3aaf3a4b240b27e",
+  "apiKey": "AIzaSyBvdoFnfj3H6PMBG8GhdYIptqMY31CnAt8",
+  "authDomain": "medtrips-ed62b.firebaseapp.com",
   "firestoreDatabaseId": "(default)",
-  "storageBucket": "medtrips-bd6b4.firebasestorage.app",
-  "messagingSenderId": "745397872995",
-  "measurementId": "G-HCG8DSH9RX"
+  "storageBucket": "medtrips-ed62b.firebasestorage.app",
+  "messagingSenderId": "35455109467"
 }
