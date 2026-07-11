@@ -1,11 +1,10 @@
 {
-  "projectId": "glass-district-jfs6l",
-  "appId": "1:458546786447:web:4471ef9d7bdecea6b340fa",
-  "apiKey": "AIzaSyBoVTQWPHlAmxirvq2PpHLIyHnSjBW1EjE",
-  "authDomain": "glass-district-jfs6l.firebaseapp.com",
-  "firestoreDatabaseId": "ai-studio-studytrips-b7f8cc6b-96c5-4a99-9c29-3484cf99fc15",
-  "storageBucket": "glass-district-jfs6l.firebasestorage.app",
-  "messagingSenderId": "458546786447",
-  "measurementId": "",
-  "oAuthClientId": "458546786447-hd30pesp1tk2o48coqe4r5nfvikuu8ut.apps.googleusercontent.com"
+  "projectId": "medtrips-bd6b4",
+  "appId": "1:745397872995:web:2894528e16c13892338b56",
+  "apiKey": "AIzaSyCXuKtWEgYRUl1n0SAvpNTmIUv_iMN0ga4",
+  "authDomain": "medtrips-bd6b4.firebaseapp.com",
+  "firestoreDatabaseId": "(default)",
+  "storageBucket": "medtrips-bd6b4.firebasestorage.app",
+  "messagingSenderId": "745397872995",
+  "measurementId": "G-HCG8DSH9RX"
 }

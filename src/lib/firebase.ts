@@ -1,6 +1,6 @@
 import { initializeApp } from 'firebase/app';
-import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, User } from 'firebase/auth';
-import { getFirestore, doc, setDoc, getDoc, collection, getDocs, updateDoc, arrayUnion, arrayRemove, query, where, Timestamp, onSnapshot } from 'firebase/firestore';
+import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, setPersistence, browserLocalPersistence, User } from 'firebase/auth';
+import { getFirestore, doc, setDoc, getDoc, collection, getDocs, updateDoc, arrayUnion, arrayRemove, query, where, Timestamp, onSnapshot, enableIndexedDbPersistence } from 'firebase/firestore';
 import firebaseConfigData from '../../firebase-applet-config.json';
 
 const app = initializeApp({
@@ -15,6 +15,18 @@ const app = initializeApp({
 export const auth = getAuth(app);
 export const db = getFirestore(app, firebaseConfigData.firestoreDatabaseId);
 export const googleProvider = new GoogleAuthProvider();
+
+setPersistence(auth, browserLocalPersistence).catch((err) => {
+  console.warn('Firebase auth persistence could not be enabled:', err);
+});
+
+enableIndexedDbPersistence(db).catch((err: any) => {
+  if (err?.code === 'failed-precondition') {
+    console.warn('Firestore persistence is already enabled in another tab.');
+  } else if (err?.code === 'unimplemented') {
+    console.warn('Firestore persistence is not supported in this browser.');
+  }
+});
 
 export {
   signInWithPopup,

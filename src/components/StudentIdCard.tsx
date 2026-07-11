@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { StudySession, Subject } from '../types';
 import { formatDuration } from '../utils/studyStats';
 import { Award, Flame, User, Calendar, BookOpen, ShieldCheck, Edit2, Check, Sparkles, Trophy } from 'lucide-react';
+import doctorAvatar from '../assets/images/animated_doctor_avatar_1783755080501.jpg';
 
 interface StudentIdCardProps {
   sessions: StudySession[];
@@ -14,7 +15,7 @@ export const StudentIdCard: React.FC<StudentIdCardProps> = ({ sessions, sessions
   const [year, setYear] = useState('2nd Year MBBS');
   const [studentId, setStudentId] = useState('MED-2026-AMOLI');
   const [college, setCollege] = useState('Medical College & University');
-  const [avatar, setAvatar] = useState('/src/assets/images/animated_doctor_avatar_1783755080501.jpg'); // Custom animated doctor avatar
+  const [avatar] = useState(doctorAvatar); // Custom animated doctor avatar
 
   // Calculate highest productive day
   const dailyTotals: Record<string, number> = {};

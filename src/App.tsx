@@ -34,10 +34,10 @@ export default function App() {
     return () => unsubscribeAuth();
   }, []);
 
-  // Real-time Firestore sync across devices for the logged-in user / guest account
+  // Real-time Firestore sync across devices for the logged-in user
   useEffect(() => {
-    if (cloudQuotaExhausted) return;
-    const docId = currentUser ? currentUser.uid : 'guest_study_tracker';
+    if (cloudQuotaExhausted || !currentUser) return;
+    const docId = currentUser.uid;
     const docRef = doc(db, 'user_data', docId);
     
     const unsubscribe = onSnapshot(docRef, (docSnap) => {
@@ -213,11 +213,11 @@ export default function App() {
 
   // Save to Firestore when state changes (syncing across devices for the account)
   useEffect(() => {
-    if (cloudQuotaExhausted) return;
+    if (cloudQuotaExhausted || !currentUser) return;
     const saveToCloud = async () => {
-      if (cloudQuotaExhausted) return;
+      if (cloudQuotaExhausted || !currentUser) return;
       try {
-        const docId = currentUser ? currentUser.uid : 'guest_study_tracker';
+        const docId = currentUser.uid;
         const docRef = doc(db, 'user_data', docId);
         await setDoc(docRef, {
           subjects,
@@ -232,6 +232,15 @@ export default function App() {
           exams,
           updatedAt: Date.now()
         }, { merge: true });
+
+        await setDoc(doc(db, 'users', currentUser.uid), {
+          uid: currentUser.uid,
+          displayName: currentUser.displayName || currentUser.email?.split('@')[0] || 'Study Student',
+          email: currentUser.email,
+          photoURL: currentUser.photoURL || '',
+          lastActive: Date.now(),
+          totalStudyMinutes: sessions.reduce((acc, session) => acc + session.durationMinutes, 0),
+        }, { merge: true });
       } catch (err: any) {
         if (err?.code === 'resource-exhausted') {
           setCloudQuotaExhausted(true);
@@ -240,7 +249,7 @@ export default function App() {
         }
       }
     };
-    const timer = setTimeout(saveToCloud, 30000);
+    const timer = setTimeout(saveToCloud, 1500);
     return () => clearTimeout(timer);
   }, [subjects, sessions, timerSettings, goals, badges, challenges, notes, todos, links, exams, currentUser, cloudQuotaExhausted]);
 
