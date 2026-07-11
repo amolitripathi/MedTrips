@@ -16,8 +16,9 @@ import { LinksSection } from './components/LinksSection';
 import { LogSessionModal } from './components/LogSessionModal';
 import { AuthModal } from './components/AuthModal';
 import { FriendsSection } from './components/FriendsSection';
-import { db, auth, doc, setDoc, onSnapshot, onAuthStateChanged, getDoc } from './lib/firebase';
+import { db, auth, doc, setDoc, onSnapshot, onAuthStateChanged, getDoc, removeUndefinedDeep } from './lib/firebase';
 import { calculateStreaks } from './utils/studyStats';
+import { createCloudSyncGuard } from './utils/cloudSync';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<ActiveTab>('dashboard');
@@ -25,6 +26,13 @@ export default function App() {
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [cloudQuotaExhausted, setCloudQuotaExhausted] = useState(false);
+  const [isRemoteDataReady, setIsRemoteDataReady] = useState(false);
+  const syncGuardRef = React.useRef(createCloudSyncGuard());
+  const isApplyingRemoteRef = React.useRef(false);
+  const lastLocalChangeAtRef = React.useRef<number | null>(null);
+  const lastRemoteSnapshotAtRef = React.useRef<number | null>(null);
+  const initialHydrationCompleteRef = React.useRef(false);
+  const lastSyncedStateRef = React.useRef<string | null>(null);
 
   // Listen to Firebase Auth state
   useEffect(() => {
@@ -127,21 +135,70 @@ export default function App() {
     return DEFAULT_EXAMS;
   });
 
+  const markLocalChange = () => {
+    if (!isApplyingRemoteRef.current) {
+      lastLocalChangeAtRef.current = Date.now();
+    }
+  };
+
+  const getSyncStateSignature = () => JSON.stringify({
+    subjects,
+    sessions,
+    timerSettings,
+    goals,
+    badges,
+    challenges,
+    notes,
+    todos,
+    links,
+    exams,
+  });
+
+  const sanitizeForFirestore = <T,>(value: T): T => removeUndefinedDeep(value) as T;
+
   const applyRemoteData = (data: Record<string, any>) => {
-    if (Array.isArray(data.subjects)) setSubjects(data.subjects as Subject[]);
-    if (Array.isArray(data.sessions)) setSessions(data.sessions as StudySession[]);
-    if (data.timerSettings) setTimerSettings(data.timerSettings as TimerSettings);
-    if (Array.isArray(data.goals)) setGoals(data.goals as StudyGoal[]);
-    if (Array.isArray(data.badges)) setBadges(data.badges as Badge[]);
-    if (Array.isArray(data.challenges)) setChallenges(data.challenges as Challenge[]);
-    if (Array.isArray(data.notes)) setNotes(data.notes as StudyNote[]);
-    if (Array.isArray(data.todos)) setTodos(data.todos as TodoItem[]);
-    if (Array.isArray(data.links)) setLinks(data.links as StudyLink[]);
-    if (Array.isArray(data.exams)) setExams(data.exams as ExamDeadline[]);
+    const remoteUpdatedAt = typeof data.updatedAt === 'number' ? data.updatedAt : null;
+    if (remoteUpdatedAt && lastRemoteSnapshotAtRef.current && remoteUpdatedAt < lastRemoteSnapshotAtRef.current) {
+      return;
+    }
+    if (remoteUpdatedAt && lastLocalChangeAtRef.current && lastLocalChangeAtRef.current > remoteUpdatedAt) {
+      return;
+    }
+
+    isApplyingRemoteRef.current = true;
+    syncGuardRef.current.beginRemoteApply();
+    try {
+      if (Array.isArray(data.subjects)) setSubjects(data.subjects as Subject[]);
+      if (Array.isArray(data.sessions)) setSessions(data.sessions as StudySession[]);
+      if (data.timerSettings) setTimerSettings(data.timerSettings as TimerSettings);
+      if (Array.isArray(data.goals)) setGoals(data.goals as StudyGoal[]);
+      if (Array.isArray(data.badges)) setBadges(data.badges as Badge[]);
+      if (Array.isArray(data.challenges)) setChallenges(data.challenges as Challenge[]);
+      if (Array.isArray(data.notes)) setNotes(data.notes as StudyNote[]);
+      if (Array.isArray(data.todos)) setTodos(data.todos as TodoItem[]);
+      if (Array.isArray(data.links)) setLinks(data.links as StudyLink[]);
+      if (Array.isArray(data.exams)) setExams(data.exams as ExamDeadline[]);
+      if (remoteUpdatedAt) {
+        lastRemoteSnapshotAtRef.current = remoteUpdatedAt;
+      }
+      lastSyncedStateRef.current = getSyncStateSignature();
+    } finally {
+      isApplyingRemoteRef.current = false;
+      syncGuardRef.current.endRemoteApply();
+    }
   };
 
   useEffect(() => {
-    if (!currentUser) return;
+    if (!currentUser) {
+      setIsRemoteDataReady(false);
+      initialHydrationCompleteRef.current = false;
+      syncGuardRef.current.reset();
+      return;
+    }
+
+    setIsRemoteDataReady(false);
+    initialHydrationCompleteRef.current = false;
+    syncGuardRef.current.beginHydration();
 
     const loadRemoteData = async () => {
       try {
@@ -150,8 +207,14 @@ export default function App() {
         if (docSnap.exists()) {
           applyRemoteData(docSnap.data());
         }
+        syncGuardRef.current.finishHydration();
+        initialHydrationCompleteRef.current = true;
+        setIsRemoteDataReady(true);
       } catch (err) {
         console.error('Error loading cloud data:', err);
+        syncGuardRef.current.finishHydration();
+        initialHydrationCompleteRef.current = true;
+        setIsRemoteDataReady(true);
       }
     };
 
@@ -159,7 +222,7 @@ export default function App() {
   }, [currentUser]);
 
   useEffect(() => {
-    if (cloudQuotaExhausted || !currentUser) return;
+    if (cloudQuotaExhausted || !currentUser || !isRemoteDataReady) return;
 
     const docRef = doc(db, 'user_data', currentUser.uid);
     const unsubscribe = onSnapshot(
@@ -181,9 +244,10 @@ export default function App() {
     );
 
     return () => unsubscribe();
-  }, [currentUser, cloudQuotaExhausted]);
+  }, [currentUser, cloudQuotaExhausted, isRemoteDataReady]);
 
   const handleAddExam = (exam: Omit<ExamDeadline, 'id' | 'createdAt'>) => {
+    markLocalChange();
     const newExam: ExamDeadline = {
       ...exam,
       id: `exam-${Date.now()}`,
@@ -193,6 +257,7 @@ export default function App() {
   };
 
   const handleDeleteExam = (id: string) => {
+    markLocalChange();
     setExams(prev => prev.filter(e => e.id !== id));
   };
 
@@ -239,13 +304,35 @@ export default function App() {
 
   // Save to Firestore when state changes (syncing across devices for the account)
   useEffect(() => {
-    if (cloudQuotaExhausted || !currentUser) return;
+    if (cloudQuotaExhausted || !currentUser || !isRemoteDataReady || !initialHydrationCompleteRef.current) return;
+    if (!syncGuardRef.current.canPersist()) return;
+
     const saveToCloud = async () => {
-      if (cloudQuotaExhausted || !currentUser) return;
+      if (cloudQuotaExhausted || !currentUser || !isRemoteDataReady || !initialHydrationCompleteRef.current) return;
+      if (!syncGuardRef.current.canPersist()) return;
+
       try {
         const docId = currentUser.uid;
         const docRef = doc(db, 'user_data', docId);
-        await setDoc(docRef, {
+        const remoteSnap = await getDoc(docRef);
+        const remoteData = remoteSnap.exists() ? remoteSnap.data() : null;
+        const remoteUpdatedAt = typeof remoteData?.updatedAt === 'number' ? remoteData.updatedAt : 0;
+        const localChangeTime = lastLocalChangeAtRef.current ?? 0;
+        const currentStateSignature = getSyncStateSignature();
+
+        if (remoteUpdatedAt > localChangeTime) {
+          lastSyncedStateRef.current = currentStateSignature;
+          return;
+        }
+
+        if (lastSyncedStateRef.current === currentStateSignature) {
+          return;
+        }
+
+        const now = Date.now();
+        lastLocalChangeAtRef.current = now;
+
+        await setDoc(docRef, sanitizeForFirestore({
           subjects,
           sessions,
           timerSettings,
@@ -256,17 +343,21 @@ export default function App() {
           todos,
           links,
           exams,
-          updatedAt: Date.now()
-        }, { merge: true });
+          updatedAt: now,
+          updatedBy: currentUser.uid
+        }), { merge: true });
 
-        await setDoc(doc(db, 'users', currentUser.uid), {
+        lastSyncedStateRef.current = currentStateSignature;
+        lastRemoteSnapshotAtRef.current = now;
+
+        await setDoc(doc(db, 'users', currentUser.uid), sanitizeForFirestore({
           uid: currentUser.uid,
           displayName: currentUser.displayName || currentUser.email?.split('@')[0] || 'Study Student',
           email: currentUser.email,
           photoURL: currentUser.photoURL || '',
           lastActive: Date.now(),
           totalStudyMinutes: sessions.reduce((acc, session) => acc + session.durationMinutes, 0),
-        }, { merge: true });
+        }), { merge: true });
       } catch (err: any) {
         if (err?.code === 'resource-exhausted') {
           setCloudQuotaExhausted(true);
@@ -277,12 +368,13 @@ export default function App() {
     };
     const timer = setTimeout(saveToCloud, 1500);
     return () => clearTimeout(timer);
-  }, [subjects, sessions, timerSettings, goals, badges, challenges, notes, todos, links, exams, currentUser, cloudQuotaExhausted]);
+  }, [subjects, sessions, timerSettings, goals, badges, challenges, notes, todos, links, exams, currentUser, cloudQuotaExhausted, isRemoteDataReady]);
 
   const { currentStreak: streak } = calculateStreaks(sessions);
 
   // Session handlers
   const handleAddSession = (sessionData: Omit<StudySession, 'id' | 'createdAt'>) => {
+    markLocalChange();
     const newSession: StudySession = {
       ...sessionData,
       id: `sess-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
@@ -292,15 +384,18 @@ export default function App() {
   };
 
   const handleDeleteSession = (id: string) => {
+    markLocalChange();
     setSessions(prev => prev.filter(s => s.id !== id));
   };
 
   const handleUpdateSession = (updatedSession: StudySession) => {
+    markLocalChange();
     setSessions(prev => prev.map(s => (s.id === updatedSession.id ? updatedSession : s)));
   };
 
   // Subject and Paper handlers
   const handleAddSubject = (name: string, color: string) => {
+    markLocalChange();
     const newSub: Subject = {
       id: `sub-${Date.now()}`,
       name,
@@ -311,16 +406,19 @@ export default function App() {
   };
 
   const handleDeleteSubject = (subjectId: string) => {
+    markLocalChange();
     setSubjects(prev => prev.filter(s => s.id !== subjectId));
   };
 
   const handleUpdateSubject = (subjectId: string, name: string, color: string) => {
+    markLocalChange();
     setSubjects(prev =>
       prev.map(sub => (sub.id === subjectId ? { ...sub, name, color } : sub))
     );
   };
 
   const handleAddPaper = (subjectId: string, paperName: string, code?: string) => {
+    markLocalChange();
     const newPaper = {
       id: `pap-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
       name: paperName,
@@ -332,6 +430,7 @@ export default function App() {
   };
 
   const handleUpdatePaper = (subjectId: string, paperId: string, paperName: string, code?: string) => {
+    markLocalChange();
     setSubjects(prev =>
       prev.map(sub =>
         sub.id === subjectId
@@ -345,6 +444,7 @@ export default function App() {
   };
 
   const handleDeletePaper = (subjectId: string, paperId: string) => {
+    markLocalChange();
     setSubjects(prev =>
       prev.map(sub =>
         sub.id === subjectId ? { ...sub, papers: sub.papers.filter(p => p.id !== paperId) } : sub
@@ -354,6 +454,7 @@ export default function App() {
 
   // Goals handlers
   const handleAddGoal = (goalData: Omit<StudyGoal, 'id'>) => {
+    markLocalChange();
     const newGoal: StudyGoal = {
       ...goalData,
       id: `goal-${Date.now()}`,
@@ -362,11 +463,13 @@ export default function App() {
   };
 
   const handleDeleteGoal = (goalId: string) => {
+    markLocalChange();
     setGoals(prev => prev.filter(g => g.id !== goalId));
   };
 
   // Gamification handlers
   const handleAddChallenge = (chalData: Omit<Challenge, 'id' | 'completed'>) => {
+    markLocalChange();
     const newChal: Challenge = {
       ...chalData,
       id: `chal-${Date.now()}`,
@@ -376,11 +479,13 @@ export default function App() {
   };
 
   const handleToggleChallenge = (chalId: string) => {
+    markLocalChange();
     setChallenges(prev => prev.map(c => c.id === chalId ? { ...c, completed: !c.completed } : c));
   };
 
   // Notes handlers
   const handleAddNote = (noteData: Omit<StudyNote, 'id' | 'updatedAt'>) => {
+    markLocalChange();
     const newNote: StudyNote = {
       ...noteData,
       id: `note-${Date.now()}`,
@@ -390,15 +495,18 @@ export default function App() {
   };
 
   const handleUpdateNote = (updatedNote: StudyNote) => {
+    markLocalChange();
     setNotes(prev => prev.map(n => n.id === updatedNote.id ? updatedNote : n));
   };
 
   const handleDeleteNote = (noteId: string) => {
+    markLocalChange();
     setNotes(prev => prev.filter(n => n.id !== noteId));
   };
 
   // Todo handlers
   const handleAddTodo = (todoData: Omit<TodoItem, 'id' | 'createdAt'>) => {
+    markLocalChange();
     const newTodo: TodoItem = {
       ...todoData,
       id: `todo-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
@@ -408,14 +516,17 @@ export default function App() {
   };
 
   const handleToggleTodo = (id: string) => {
+    markLocalChange();
     setTodos(prev => prev.map(t => t.id === id ? { ...t, completed: !t.completed } : t));
   };
 
   const handleDeleteTodo = (id: string) => {
+    markLocalChange();
     setTodos(prev => prev.filter(t => t.id !== id));
   };
 
   const handleAddLink = (linkData: Omit<StudyLink, 'id' | 'createdAt'>) => {
+    markLocalChange();
     const newLink: StudyLink = {
       ...linkData,
       id: `link-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
@@ -425,12 +536,14 @@ export default function App() {
   };
 
   const handleDeleteLink = (id: string) => {
+    markLocalChange();
     setLinks(prev => prev.filter(l => l.id !== id));
   };
 
   // Data management handlers
   const handleResetData = () => {
     if (confirm('Reset all data to default sample study records? This will overwrite your current progress.')) {
+      markLocalChange();
       setSubjects(DEFAULT_SUBJECTS);
       setSessions(DEFAULT_SESSIONS);
       setTimerSettings(DEFAULT_TIMER_SETTINGS);
@@ -474,6 +587,7 @@ export default function App() {
       try {
         const parsed = JSON.parse(event.target?.result as string);
         if (parsed.subjects && parsed.sessions) {
+          markLocalChange();
           setSubjects(parsed.subjects);
           setSessions(parsed.sessions);
           if (parsed.timerSettings) setTimerSettings(parsed.timerSettings);
