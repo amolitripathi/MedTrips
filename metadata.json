@@ -1,0 +1,8 @@
+{
+  "name": "StudyTrips",
+  "description": "Track study time subject-wise and paper-wise with calendar study hours view, to-do list manager, daily, monthly, and yearly stats, graphs, streaks, daily average, and built-in Pomodoro and stopwatch timers.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
