@@ -81,7 +81,7 @@ export const FriendsSection: React.FC<FriendsSectionProps> = ({ currentUser, ses
           } else {
             // Add some sample mock friends if no friends added yet, for great out-of-the-box experience
             setFriends([
-              { uid: 'mock-1', displayName: 'Dr. Sarah Jenkins', email: 'sarah@med.edu', totalSizeMinutes: 2840, totalStudyMinutes: 2840, streak: 14 },
+              { uid: 'mock-1', displayName: 'Dr. Sarah Jenkins', email: 'sarah@med.edu', totalStudyMinutes: 2840, streak: 14 },
               { uid: 'mock-2', displayName: 'Alex Chen (Resident)', email: 'alex@med.edu', totalStudyMinutes: 2150, streak: 9 },
               { uid: 'mock-3', displayName: 'Priya Sharma', email: 'priya@med.edu', totalStudyMinutes: 1920, streak: 6 },
             ]);

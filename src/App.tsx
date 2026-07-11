@@ -16,7 +16,7 @@ import { LinksSection } from './components/LinksSection';
 import { LogSessionModal } from './components/LogSessionModal';
 import { AuthModal } from './components/AuthModal';
 import { FriendsSection } from './components/FriendsSection';
-import { db, auth, doc, setDoc, onSnapshot, onAuthStateChanged } from './lib/firebase';
+import { db, auth, doc, setDoc, onSnapshot, onAuthStateChanged, getDoc } from './lib/firebase';
 import { calculateStreaks } from './utils/studyStats';
 
 export default function App() {
@@ -33,36 +33,6 @@ export default function App() {
     });
     return () => unsubscribeAuth();
   }, []);
-
-  // Real-time Firestore sync across devices for the logged-in user
-  useEffect(() => {
-    if (cloudQuotaExhausted || !currentUser) return;
-    const docId = currentUser.uid;
-    const docRef = doc(db, 'user_data', docId);
-    
-    const unsubscribe = onSnapshot(docRef, (docSnap) => {
-      if (docSnap.exists()) {
-        const data = docSnap.data();
-        if (data.subjects) setSubjects(data.subjects);
-        if (data.sessions) setSessions(data.sessions);
-        if (data.timerSettings) setTimerSettings(data.timerSettings);
-        if (data.goals) setGoals(data.goals);
-        if (data.badges) setBadges(data.badges);
-        if (data.challenges) setChallenges(data.challenges);
-        if (data.notes) setNotes(data.notes);
-        if (data.todos) setTodos(data.todos);
-        if (data.links) setLinks(data.links);
-        if (data.exams) setExams(data.exams);
-      }
-    }, (error: any) => {
-      if (error?.code === 'resource-exhausted') {
-        setCloudQuotaExhausted(true);
-      }
-    });
-
-    return () => unsubscribe();
-  }, [currentUser, cloudQuotaExhausted]);
-
 
   // State with localStorage persistence
   const [subjects, setSubjects] = useState<Subject[]>(() => {
@@ -156,6 +126,62 @@ export default function App() {
     }
     return DEFAULT_EXAMS;
   });
+
+  const applyRemoteData = (data: Record<string, any>) => {
+    if (Array.isArray(data.subjects)) setSubjects(data.subjects as Subject[]);
+    if (Array.isArray(data.sessions)) setSessions(data.sessions as StudySession[]);
+    if (data.timerSettings) setTimerSettings(data.timerSettings as TimerSettings);
+    if (Array.isArray(data.goals)) setGoals(data.goals as StudyGoal[]);
+    if (Array.isArray(data.badges)) setBadges(data.badges as Badge[]);
+    if (Array.isArray(data.challenges)) setChallenges(data.challenges as Challenge[]);
+    if (Array.isArray(data.notes)) setNotes(data.notes as StudyNote[]);
+    if (Array.isArray(data.todos)) setTodos(data.todos as TodoItem[]);
+    if (Array.isArray(data.links)) setLinks(data.links as StudyLink[]);
+    if (Array.isArray(data.exams)) setExams(data.exams as ExamDeadline[]);
+  };
+
+  useEffect(() => {
+    if (!currentUser) return;
+
+    const loadRemoteData = async () => {
+      try {
+        const docRef = doc(db, 'user_data', currentUser.uid);
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+          applyRemoteData(docSnap.data());
+        }
+      } catch (err) {
+        console.error('Error loading cloud data:', err);
+      }
+    };
+
+    loadRemoteData();
+  }, [currentUser]);
+
+  useEffect(() => {
+    if (cloudQuotaExhausted || !currentUser) return;
+
+    const docRef = doc(db, 'user_data', currentUser.uid);
+    const unsubscribe = onSnapshot(
+      docRef,
+      { includeMetadataChanges: true },
+      (docSnap) => {
+        if (docSnap.metadata.hasPendingWrites) return;
+        if (docSnap.exists()) {
+          applyRemoteData(docSnap.data());
+        }
+      },
+      (error: any) => {
+        if (error?.code === 'resource-exhausted') {
+          setCloudQuotaExhausted(true);
+        } else {
+          console.error('Firestore sync error:', error);
+        }
+      }
+    );
+
+    return () => unsubscribe();
+  }, [currentUser, cloudQuotaExhausted]);
 
   const handleAddExam = (exam: Omit<ExamDeadline, 'id' | 'createdAt'>) => {
     const newExam: ExamDeadline = {
