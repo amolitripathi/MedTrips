@@ -16,6 +16,8 @@ export interface StudySession {
   subjectId: string;
   paperId: string;
   date: string; // YYYY-MM-DD
+  startTime?: string; // HH:mm
+  endTime?: string; // HH:mm
   durationMinutes: number;
   notes?: string;
   createdAt: number;

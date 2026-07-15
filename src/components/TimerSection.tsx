@@ -30,19 +30,24 @@ export const TimerSection: React.FC<TimerSectionProps> = ({
   const [isRunning, setIsRunning] = useState(false);
   const [stopwatchSeconds, setStopwatchSeconds] = useState(0);
   const [soundEnabled, setSoundEnabled] = useState(true);
+  const [alertTone, setAlertTone] = useState<'bell' | 'chime' | 'beep' | 'none'>('bell');
   const [showSettings, setShowSettings] = useState(false);
   const [sessionCompletedMsg, setSessionCompletedMsg] = useState<string | null>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
-  const [ambientSound, setAmbientSound] = useState<'none' | 'white' | 'brown' | 'rain'>('none');
+  const [ambientSound, setAmbientSound] = useState<'none' | 'white' | 'brown' | 'rain' | 'lofi' | 'piano'>('none');
   const audioCtxRef = useRef<AudioContext | null>(null);
-  const sourceNodeRef = useRef<AudioBufferSourceNode | null>(null);
+  const sourceNodeRef = useRef<AudioNode | null>(null);
   const gainNodeRef = useRef<GainNode | null>(null);
+  const lastUpdateTimeRef = useRef<number | null>(null);
+  const timerCardRef = useRef<HTMLDivElement | null>(null);
+  const intervalRef = useRef<number | null>(null);
 
   // Stop ambient sound on unmount
   useEffect(() => {
     return () => {
       if (sourceNodeRef.current) {
-        try { sourceNodeRef.current.stop(); sourceNodeRef.current.disconnect(); } catch {}
+        try { (sourceNodeRef.current as any).stop?.(); sourceNodeRef.current.disconnect(); } catch {}
       }
       if (gainNodeRef.current) {
         try { gainNodeRef.current.disconnect(); } catch {}
@@ -50,15 +55,18 @@ export const TimerSection: React.FC<TimerSectionProps> = ({
       if (audioCtxRef.current && audioCtxRef.current.state !== 'closed') {
         try { audioCtxRef.current.close(); } catch {}
       }
+      if (intervalRef.current) {
+        window.clearInterval(intervalRef.current);
+      }
     };
   }, []);
 
-  const handleAmbientChange = (type: 'none' | 'white' | 'brown' | 'rain') => {
+  const handleAmbientChange = (type: 'none' | 'white' | 'brown' | 'rain' | 'lofi' | 'piano') => {
     setAmbientSound(type);
 
     // Stop current source & gain if active
     if (sourceNodeRef.current) {
-      try { sourceNodeRef.current.stop(); sourceNodeRef.current.disconnect(); } catch {}
+      try { (sourceNodeRef.current as any).stop?.(); sourceNodeRef.current.disconnect(); } catch {}
       sourceNodeRef.current = null;
     }
     if (gainNodeRef.current) {
@@ -77,55 +85,94 @@ export const TimerSection: React.FC<TimerSectionProps> = ({
         ctx.resume();
       }
 
-      const bufferSize = ctx.sampleRate * 4;
-      const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
-      const data = buffer.getChannelData(0);
-
-      if (type === 'white') {
-        for (let i = 0; i < bufferSize; i++) {
-          data[i] = Math.random() * 2 - 1;
-        }
-      } else if (type === 'brown') {
-        let lastOut = 0.0;
-        for (let i = 0; i < bufferSize; i++) {
-          const white = Math.random() * 2 - 1;
-          data[i] = (lastOut + (0.02 * white)) / 1.02;
-          lastOut = data[i];
-          data[i] *= 3.5;
-        }
-      } else if (type === 'rain') {
-        let lastOut = 0.0;
-        for (let i = 0; i < bufferSize; i++) {
-          const white = Math.random() * 2 - 1;
-          data[i] = (lastOut + (0.04 * white)) / 1.04;
-          lastOut = data[i];
-          data[i] *= 3.0;
-        }
-      }
-
-      const source = ctx.createBufferSource();
-      source.buffer = buffer;
-      source.loop = true;
-
-      const filter = ctx.createBiquadFilter();
-      if (type === 'rain') {
-        filter.type = 'lowpass';
-        filter.frequency.setValueAtTime(1000, ctx.currentTime);
-      } else if (type === 'brown') {
-        filter.type = 'lowpass';
-        filter.frequency.setValueAtTime(600, ctx.currentTime);
-      } else {
-        filter.type = 'lowpass';
-        filter.frequency.setValueAtTime(7000, ctx.currentTime);
-      }
-
+      let source: AudioNode | null = null;
       const gain = ctx.createGain();
       gain.gain.setValueAtTime(0.15, ctx.currentTime);
 
-      source.connect(filter);
-      filter.connect(gain);
-      gain.connect(ctx.destination);
-      source.start();
+      if (type === 'lofi') {
+        const oscillator1 = ctx.createOscillator();
+        oscillator1.type = 'sine';
+        oscillator1.frequency.setValueAtTime(220, ctx.currentTime);
+        const oscillator2 = ctx.createOscillator();
+        oscillator2.type = 'triangle';
+        oscillator2.frequency.setValueAtTime(440, ctx.currentTime);
+
+        const filter = ctx.createBiquadFilter();
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(800, ctx.currentTime);
+
+        const merger = ctx.createGain();
+        merger.gain.setValueAtTime(0.12, ctx.currentTime);
+
+        oscillator1.connect(filter);
+        oscillator2.connect(merger);
+        filter.connect(merger);
+        merger.connect(gain);
+        gain.connect(ctx.destination);
+        oscillator1.start();
+        oscillator2.start();
+        source = merger;
+      } else if (type === 'piano') {
+        const oscillator = ctx.createOscillator();
+        oscillator.type = 'triangle';
+        oscillator.frequency.setValueAtTime(440, ctx.currentTime);
+        const filter = ctx.createBiquadFilter();
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(1200, ctx.currentTime);
+        oscillator.connect(filter);
+        filter.connect(gain);
+        gain.connect(ctx.destination);
+        oscillator.start();
+        source = oscillator;
+      } else {
+        const bufferSize = ctx.sampleRate * 4;
+        const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+        const data = buffer.getChannelData(0);
+
+        if (type === 'white') {
+          for (let i = 0; i < bufferSize; i++) {
+            data[i] = Math.random() * 2 - 1;
+          }
+        } else if (type === 'brown') {
+          let lastOut = 0.0;
+          for (let i = 0; i < bufferSize; i++) {
+            const white = Math.random() * 2 - 1;
+            data[i] = (lastOut + (0.02 * white)) / 1.02;
+            lastOut = data[i];
+            data[i] *= 3.5;
+          }
+        } else if (type === 'rain') {
+          let lastOut = 0.0;
+          for (let i = 0; i < bufferSize; i++) {
+            const white = Math.random() * 2 - 1;
+            data[i] = (lastOut + (0.04 * white)) / 1.04;
+            lastOut = data[i];
+            data[i] *= 3.0;
+          }
+        }
+
+        const sourceBuffer = ctx.createBufferSource();
+        sourceBuffer.buffer = buffer;
+        sourceBuffer.loop = true;
+
+        const filter = ctx.createBiquadFilter();
+        if (type === 'rain' || type === 'piano') {
+          filter.type = 'lowpass';
+          filter.frequency.setValueAtTime(1000, ctx.currentTime);
+        } else if (type === 'brown') {
+          filter.type = 'lowpass';
+          filter.frequency.setValueAtTime(600, ctx.currentTime);
+        } else {
+          filter.type = 'lowpass';
+          filter.frequency.setValueAtTime(7000, ctx.currentTime);
+        }
+
+        sourceBuffer.connect(filter);
+        filter.connect(gain);
+        gain.connect(ctx.destination);
+        sourceBuffer.start();
+        source = sourceBuffer;
+      }
 
       sourceNodeRef.current = source;
       gainNodeRef.current = gain;
@@ -163,72 +210,100 @@ export const TimerSection: React.FC<TimerSectionProps> = ({
 
   // Audio beep simulation using Web Audio API
   const playAlertSound = () => {
-    if (!soundEnabled) return;
+    if (!soundEnabled || alertTone === 'none') return;
     try {
       const audioCtx = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
-      const osc = audioCtx.createOscillator();
       const gain = audioCtx.createGain();
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(587.33, audioCtx.currentTime); // D5
-      gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 1.2);
-      osc.connect(gain);
       gain.connect(audioCtx.destination);
-      osc.start();
-      osc.stop(audioCtx.currentTime + 1.2);
+      gain.gain.setValueAtTime(0.4, audioCtx.currentTime);
+
+      const playTone = (frequency: number, duration: number) => {
+        const osc = audioCtx.createOscillator();
+        osc.connect(gain);
+        osc.frequency.setValueAtTime(frequency, audioCtx.currentTime);
+        osc.start();
+        osc.stop(audioCtx.currentTime + duration);
+      };
+
+      const now = audioCtx.currentTime;
+      if (alertTone === 'bell') {
+        playTone(880, 0.18);
+        setTimeout(() => playTone(660, 0.18), 220);
+        setTimeout(() => playTone(1046, 0.24), 460);
+      } else if (alertTone === 'chime') {
+        playTone(660, 0.22);
+        setTimeout(() => playTone(740, 0.22), 260);
+        setTimeout(() => playTone(880, 0.26), 520);
+      } else {
+        playTone(587.33, 1.2);
+      }
     } catch {
       // AudioContext not allowed or supported without user gesture
     }
   };
 
-  // Timer countdown / stopwatch tick
+  // Timer countdown / stopwatch tick with background persistence
   useEffect(() => {
-    let interval: NodeJS.Timeout | null = null;
-
-    if (isRunning) {
-      if (mode === 'stopwatch') {
-        interval = setInterval(() => {
-          setStopwatchSeconds(prev => prev + 1);
-        }, 1000);
-      } else {
-        interval = setInterval(() => {
-          setTimeLeft(prev => {
-            if (prev <= 1) {
-              setIsRunning(false);
-              playAlertSound();
-              if (mode === 'pomodoro') {
-                const earnedMinutes = timerSettings.pomodoroMinutes;
-                onAddSession({
-                  subjectId: selectedSubjectId,
-                  paperId: selectedPaperId || 'general',
-                  date: new Date().toISOString().split('T')[0],
-                  durationMinutes: earnedMinutes,
-                  notes: 'Completed Pomodoro session',
-                });
-                setSessionCompletedMsg(`Pomodoro finished! Logged ${earnedMinutes} minutes.`);
-                confetti({ particleCount: 120, spread: 90, origin: { y: 0.6 } });
-              } else if (mode === 'countdown') {
-                const earnedMinutes = customMinutes;
-                onAddSession({
-                  subjectId: selectedSubjectId,
-                  paperId: selectedPaperId || 'general',
-                  date: new Date().toISOString().split('T')[0],
-                  durationMinutes: earnedMinutes,
-                  notes: 'Completed Countdown timer session',
-                });
-                setSessionCompletedMsg(`Countdown finished! Logged ${earnedMinutes} minutes.`);
-                confetti({ particleCount: 120, spread: 90, origin: { y: 0.6 } });
-              }
-              return 0;
-            }
-            return prev - 1;
-          });
-        }, 1000);
-      }
+    if (intervalRef.current) {
+      window.clearInterval(intervalRef.current);
+      intervalRef.current = null;
     }
 
+    if (!isRunning) return;
+
+    lastUpdateTimeRef.current = Date.now();
+
+    intervalRef.current = window.setInterval(() => {
+      const now = Date.now();
+      const elapsed = lastUpdateTimeRef.current ? Math.floor((now - lastUpdateTimeRef.current) / 1000) : 1;
+      lastUpdateTimeRef.current = now;
+
+      if (mode === 'stopwatch') {
+        setStopwatchSeconds(prev => prev + elapsed);
+      } else {
+        setTimeLeft(prev => {
+          const next = prev - elapsed;
+          if (next <= 0) {
+            if (intervalRef.current) {
+              window.clearInterval(intervalRef.current);
+              intervalRef.current = null;
+            }
+            setIsRunning(false);
+            playAlertSound();
+            if (mode === 'pomodoro') {
+              const earnedMinutes = timerSettings.pomodoroMinutes;
+              onAddSession({
+                subjectId: selectedSubjectId,
+                paperId: selectedPaperId || 'general',
+                date: new Date().toISOString().split('T')[0],
+                durationMinutes: earnedMinutes,
+                notes: 'Completed Pomodoro session',
+              });
+              setSessionCompletedMsg(`Pomodoro finished! Logged ${earnedMinutes} minutes.`);
+              confetti({ particleCount: 120, spread: 90, origin: { y: 0.6 } });
+            } else if (mode === 'countdown') {
+              const earnedMinutes = customMinutes;
+              onAddSession({
+                subjectId: selectedSubjectId,
+                paperId: selectedPaperId || 'general',
+                date: new Date().toISOString().split('T')[0],
+                durationMinutes: earnedMinutes,
+                notes: 'Completed Countdown timer session',
+              });
+              setSessionCompletedMsg(`Countdown finished! Logged ${earnedMinutes} minutes.`);
+              confetti({ particleCount: 120, spread: 90, origin: { y: 0.6 } });
+            }
+            return 0;
+          }
+          return next;
+        });
+      }
+    }, 1000);
+
     return () => {
-      if (interval) clearInterval(interval);
+      if (intervalRef.current) {
+        window.clearInterval(intervalRef.current);
+      }
     };
   }, [isRunning, mode, selectedSubjectId, selectedPaperId, timerSettings, customMinutes, onAddSession]);
 

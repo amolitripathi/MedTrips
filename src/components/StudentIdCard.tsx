@@ -3,19 +3,29 @@ import { StudySession, Subject } from '../types';
 import { formatDuration } from '../utils/studyStats';
 import { Award, Flame, User, Calendar, BookOpen, ShieldCheck, Edit2, Check, Sparkles, Trophy } from 'lucide-react';
 import doctorAvatar from '../assets/images/animated_doctor_avatar_1783755080501.jpg';
+import boyDoctorAvatar from '../assets/images/boy_doctor_avatar.svg';
 
 interface StudentIdCardProps {
   sessions: StudySession[];
   subjects: Subject[];
+  avatarType: 'doctor' | 'boy';
+  onAvatarTypeChange: (type: 'doctor' | 'boy') => void;
 }
 
-export const StudentIdCard: React.FC<StudentIdCardProps> = ({ sessions, sessions: _sessions, subjects }) => {
+export const StudentIdCard: React.FC<StudentIdCardProps> = ({ sessions, sessions: _sessions, subjects, avatarType, onAvatarTypeChange }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [name, setName] = useState('Amoli Tripathi');
   const [year, setYear] = useState('2nd Year MBBS');
   const [studentId, setStudentId] = useState('MED-2026-AMOLI');
   const [college, setCollege] = useState('Medical College & University');
-  const [avatar] = useState(doctorAvatar); // Custom animated doctor avatar
+  const [curriculum, setCurriculum] = useState('Clinical rotations, pathology, pharmacology');
+  const [curriculumTime, setCurriculumTime] = useState('18 hrs/week');
+  const [dream, setDream] = useState('Become a leading physician-scientist');
+  const avatarMap = {
+    doctor: doctorAvatar,
+    boy: boyDoctorAvatar,
+  };
+  const avatar = avatarMap[avatarType];
 
   // Calculate highest productive day
   const dailyTotals: Record<string, number> = {};
@@ -86,7 +96,7 @@ export const StudentIdCard: React.FC<StudentIdCardProps> = ({ sessions, sessions
               </span>
             </div>
             {isEditing ? (
-              <div className="space-y-2 mt-2">
+              <div className="space-y-3 mt-2">
                 <input
                   type="text"
                   value={name}
@@ -100,6 +110,43 @@ export const StudentIdCard: React.FC<StudentIdCardProps> = ({ sessions, sessions
                   onChange={(e) => setYear(e.target.value)}
                   className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-1 text-xs text-slate-300 w-full"
                   placeholder="Year / Course"
+                />
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => onAvatarTypeChange('doctor')}
+                    className={`w-full rounded-2xl border px-3 py-2 text-sm font-medium transition ${avatarType === 'doctor' ? 'border-indigo-400 bg-indigo-500/10 text-white' : 'border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700'}`}
+                  >
+                    Doctor avatar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onAvatarTypeChange('boy')}
+                    className={`w-full rounded-2xl border px-3 py-2 text-sm font-medium transition ${avatarType === 'boy' ? 'border-emerald-400 bg-emerald-500/10 text-white' : 'border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700'}`}
+                  >
+                    Boy doctor
+                  </button>
+                </div>
+                <input
+                  type="text"
+                  value={curriculum}
+                  onChange={(e) => setCurriculum(e.target.value)}
+                  className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-1 text-sm text-white w-full"
+                  placeholder="Curriculum focus (e.g. rotations, pathology)"
+                />
+                <input
+                  type="text"
+                  value={curriculumTime}
+                  onChange={(e) => setCurriculumTime(e.target.value)}
+                  className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-1 text-sm text-white w-full"
+                  placeholder="Curriculum time (e.g. 18 hrs/week)"
+                />
+                <textarea
+                  rows={2}
+                  value={dream}
+                  onChange={(e) => setDream(e.target.value)}
+                  className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white w-full resize-none"
+                  placeholder="Your dream / future goal"
                 />
               </div>
             ) : (
@@ -148,11 +195,11 @@ export const StudentIdCard: React.FC<StudentIdCardProps> = ({ sessions, sessions
 
         <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 backdrop-blur-md">
           <div className="flex items-center justify-between text-slate-400 mb-1">
-            <span className="text-xs uppercase font-semibold">Peak Day</span>
+            <span className="text-xs uppercase font-semibold">Dream</span>
             <Trophy className="w-4 h-4 text-amber-400" />
           </div>
-          <div className="text-xl font-black text-amber-400">{formatDuration(bestDayMinutes)}</div>
-          <div className="text-[10px] text-slate-400 mt-1">Date: {bestDayDate}</div>
+          <div className="text-sm font-semibold text-white">{dream}</div>
+          <div className="text-[10px] text-slate-400 mt-2">Write your future vision once and update it anytime.</div>
         </div>
 
         <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 backdrop-blur-md">
@@ -160,8 +207,8 @@ export const StudentIdCard: React.FC<StudentIdCardProps> = ({ sessions, sessions
             <span className="text-xs uppercase font-semibold">Curriculum</span>
             <Sparkles className="w-4 h-4 text-teal-400" />
           </div>
-          <div className="text-2xl font-black text-teal-400">8 / 8</div>
-          <div className="text-[10px] text-slate-400 mt-1">Core MBBS Subjects Active</div>
+          <div className="text-sm font-semibold text-white">{curriculum}</div>
+          <div className="text-[10px] text-slate-400 mt-2">Study commitment: {curriculumTime}</div>
         </div>
       </div>
     </div>

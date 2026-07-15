@@ -34,6 +34,7 @@ export interface PaperStat {
   subjectName: string;
   minutes: number;
   hours: number;
+  percentage: number;
 }
 
 // Format minutes into "Xh Ym"
@@ -131,6 +132,40 @@ export const getDailyStats = (sessions: StudySession[], daysCount = 30): DailySt
       minutes,
       hours: Number((minutes / 60).toFixed(1)),
     });
+  }
+
+  return result;
+};
+
+export const getDailyStatsWithGaps = (sessions: StudySession[]): DailyStat[] => {
+  if (sessions.length === 0) return [];
+
+  const sessionMap = new Map<string, number>();
+  sessions.forEach(s => {
+    const current = sessionMap.get(s.date) || 0;
+    sessionMap.set(s.date, current + s.durationMinutes);
+  });
+
+  const sortedDates = Array.from(sessionMap.keys()).sort();
+  const startDate = new Date(sortedDates[0]);
+  const endDate = new Date();
+  endDate.setHours(0, 0, 0, 0);
+
+  const result: DailyStat[] = [];
+  const current = new Date(startDate);
+  current.setHours(0, 0, 0, 0);
+
+  while (current <= endDate) {
+    const dateStr = current.toISOString().split('T')[0];
+    const formattedDate = current.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    const minutes = sessionMap.get(dateStr) || 0;
+    result.push({
+      date: dateStr,
+      formattedDate,
+      minutes,
+      hours: Number((minutes / 60).toFixed(1)),
+    });
+    current.setDate(current.getDate() + 1);
   }
 
   return result;
@@ -239,16 +274,20 @@ export const getPaperStats = (sessions: StudySession[], subjects: Subject[]): Pa
   });
 
   const result: PaperStat[] = [];
+  let totalMinutes = 0;
+  paperMap.forEach((val) => {
+    totalMinutes += val.minutes;
+  });
+
   paperMap.forEach((val, key) => {
-    if (val.minutes > 0) {
-      result.push({
-        paperId: key,
-        paperName: val.paperName,
-        subjectName: val.subjectName,
-        minutes: val.minutes,
-        hours: Number((val.minutes / 60).toFixed(1)),
-      });
-    }
+    result.push({
+      paperId: key,
+      paperName: val.paperName,
+      subjectName: val.subjectName,
+      minutes: val.minutes,
+      hours: Number((val.minutes / 60).toFixed(1)),
+      percentage: totalMinutes > 0 ? Number(((val.minutes / totalMinutes) * 100).toFixed(1)) : 0,
+    });
   });
 
   return result.sort((a, b) => b.minutes - a.minutes);

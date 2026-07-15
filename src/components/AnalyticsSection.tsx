@@ -4,6 +4,7 @@ import {
   calculateStreaks,
   getDailyAverage,
   getDailyStats,
+  getDailyStatsWithGaps,
   getMonthlyStats,
   getYearlyStats,
   getSubjectStats,
@@ -34,28 +35,13 @@ export const AnalyticsSection: React.FC<AnalyticsSectionProps> = ({ sessions, su
   const { currentStreak, bestStreak } = calculateStreaks(sessions);
   const dailyAvg = getDailyAverage(sessions);
   const dailyStats = getDailyStats(sessions, typeof dailyViewDays === 'number' ? dailyViewDays : 30);
+  const dailyStatsWithGaps = getDailyStatsWithGaps(sessions);
   const monthlyStats = getMonthlyStats(sessions);
   const yearlyStats = getYearlyStats(sessions);
   const subjectStats = getSubjectStats(sessions, subjects);
   const paperStats = getPaperStats(sessions, subjects);
 
   const totalMinutesAll = sessions.reduce((acc, s) => acc + s.durationMinutes, 0);
-
-  const lineChartData = [...sessions]
-    .sort((a, b) => a.createdAt - b.createdAt)
-    .map((s, idx) => {
-      const sub = subjects.find(sub => sub.id === s.subjectId);
-      return {
-        id: s.id,
-        entryNum: `#${idx + 1}`,
-        date: s.date,
-        formattedDate: `${s.date} (#${idx + 1})`,
-        subjectName: sub?.name || 'General Study',
-        hours: Number((s.durationMinutes / 60).toFixed(2)),
-        minutes: s.durationMinutes,
-        notes: s.notes
-      };
-    });
 
   return (
     <div className="space-y-8 max-w-7xl mx-auto text-white">
@@ -146,44 +132,45 @@ export const AnalyticsSection: React.FC<AnalyticsSectionProps> = ({ sessions, su
           </div>
         </div>
 
-        <div className="h-80 w-full">
-          <ResponsiveContainer width="100%" height="100%">
-            {dailyViewDays === 'line' ? (
-              <LineChart data={lineChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
-                <XAxis dataKey="entryNum" stroke="#64748b" fontSize={11} tickLine={false} />
-                <YAxis stroke="#64748b" fontSize={12} tickLine={false} />
-                <Tooltip
-                  content={({ active, payload }) => {
-                    if (active && payload && payload.length) {
-                      const data = payload[0].payload;
-                      return (
-                        <div className="bg-slate-900 border border-slate-700 p-3 rounded-xl shadow-xl text-xs space-y-1">
-                          <div className="font-bold text-indigo-400">{data.subjectName}</div>
-                          <div className="text-slate-300">Date: {data.date}</div>
-                          <div className="text-slate-300">Duration: {data.hours} hrs ({data.minutes} mins)</div>
-                          {data.notes && <div className="text-slate-400 italic mt-1">"{data.notes}"</div>}
-                        </div>
-                      );
-                    }
-                    return null;
-                  }}
-                />
-                <Line type="monotone" dataKey="hours" stroke="#6366f1" strokeWidth={3} dot={{ fill: '#6366f1', r: 4 }} activeDot={{ r: 7 }} />
-              </LineChart>
-            ) : (
-              <BarChart data={dailyStats} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
-                <XAxis dataKey="formattedDate" stroke="#64748b" fontSize={11} tickLine={false} />
-                <YAxis stroke="#64748b" fontSize={12} tickLine={false} />
-                <Tooltip
-                  contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '0.75rem', color: '#fff' }}
-                  formatter={(val: number) => [`${val} hrs (${Math.round(val * 60)} mins)`, 'Study Time']}
-                />
-                <Bar dataKey="hours" fill="#6366f1" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            )}
-          </ResponsiveContainer>
+        <div className="h-80 w-full overflow-x-auto rounded-3xl">
+          <div className="min-w-[900px] h-80">
+            <ResponsiveContainer width="100%" height="100%">
+              {dailyViewDays === 'line' ? (
+                <LineChart data={dailyStatsWithGaps} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
+                  <XAxis dataKey="formattedDate" stroke="#64748b" fontSize={11} tickLine={false} interval={Math.max(0, Math.floor(dailyStatsWithGaps.length / 10))} />
+                  <YAxis stroke="#64748b" fontSize={12} tickLine={false} />
+                  <Tooltip
+                    content={({ active, payload }) => {
+                      if (active && payload && payload.length) {
+                        const data = payload[0].payload;
+                        return (
+                          <div className="bg-slate-900 border border-slate-700 p-3 rounded-xl shadow-xl text-xs space-y-1">
+                            <div className="font-bold text-indigo-400">Study Date</div>
+                            <div className="text-slate-300">Date: {data.date}</div>
+                            <div className="text-slate-300">Duration: {data.hours} hrs ({Math.round(data.hours * 60)} mins)</div>
+                          </div>
+                        );
+                      }
+                      return null;
+                    }}
+                  />
+                  <Line type="monotone" dataKey="hours" stroke="#6366f1" strokeWidth={3} dot={{ fill: '#6366f1', r: 4 }} activeDot={{ r: 7 }} />
+                </LineChart>
+              ) : (
+                <BarChart data={dailyStats} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
+                  <XAxis dataKey="formattedDate" stroke="#64748b" fontSize={11} tickLine={false} />
+                  <YAxis stroke="#64748b" fontSize={12} tickLine={false} />
+                  <Tooltip
+                    contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '0.75rem', color: '#fff' }}
+                    formatter={(val: number) => [`${val} hrs (${Math.round(val * 60)} mins)`, 'Study Time']}
+                  />
+                  <Bar dataKey="hours" fill="#6366f1" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              )}
+            </ResponsiveContainer>
+          </div>
         </div>
       </div>
 
@@ -287,8 +274,11 @@ export const AnalyticsSection: React.FC<AnalyticsSectionProps> = ({ sessions, su
                   <div className="font-semibold text-sm text-white">{pap.paperName}</div>
                   <div className="text-xs text-slate-400">{pap.subjectName}</div>
                 </div>
-                <div className="px-3 py-1 rounded-lg bg-violet-500/10 text-violet-300 text-xs font-semibold border border-violet-500/20 font-mono">
-                  {formatDuration(pap.minutes)}
+                <div className="text-right space-y-1">
+                  <div className="px-3 py-1 rounded-lg bg-violet-500/10 text-violet-300 text-xs font-semibold border border-violet-500/20 font-mono">
+                    {formatDuration(pap.minutes)}
+                  </div>
+                  <div className="text-[11px] text-slate-400">{pap.percentage}% of total</div>
                 </div>
               </div>
             ))}

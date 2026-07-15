@@ -15,23 +15,30 @@ export function createCloudSyncGuard(): CloudSyncGuard {
     beginHydration() {
       hydrated = false;
       applyingRemote = false;
+      console.log('[cloudSync] beginHydration');
     },
     finishHydration() {
       hydrated = true;
       applyingRemote = false;
+      console.log('[cloudSync] finishHydration');
     },
     beginRemoteApply() {
       applyingRemote = true;
+      console.log('[cloudSync] beginRemoteApply');
     },
     endRemoteApply() {
       applyingRemote = false;
+      console.log('[cloudSync] endRemoteApply');
     },
     canPersist() {
-      return hydrated && !applyingRemote;
+      const ok = hydrated && !applyingRemote;
+      console.log('[cloudSync] canPersist', { ok, hydrated, applyingRemote });
+      return ok;
     },
     reset() {
       hydrated = false;
       applyingRemote = false;
+      console.log('[cloudSync] reset');
     },
   };
 }

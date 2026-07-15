@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Subject, StudySession, ActiveTab, TimerSettings, StudyGoal, Badge, Challenge, StudyNote, TodoItem, StudyLink, ExamDeadline } from './types';
 import { DEFAULT_SUBJECTS, DEFAULT_SESSIONS, DEFAULT_TIMER_SETTINGS, DEFAULT_GOALS, DEFAULT_BADGES, DEFAULT_CHALLENGES, DEFAULT_NOTES, DEFAULT_TODOS, DEFAULT_LINKS, DEFAULT_EXAMS } from './data/initialData';
+import doctorAvatar from './assets/images/animated_doctor_avatar_1783755080501.jpg';
+import boyDoctorAvatar from './assets/images/boy_doctor_avatar.svg';
 import { Navbar } from './components/Navbar';
 import { Dashboard } from './components/Dashboard';
 import { TimerSection } from './components/TimerSection';
@@ -27,6 +29,8 @@ export default function App() {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [cloudQuotaExhausted, setCloudQuotaExhausted] = useState(false);
   const [isRemoteDataReady, setIsRemoteDataReady] = useState(false);
+  const [avatarType, setAvatarType] = useState<'doctor' | 'boy'>('doctor');
+  const avatarSrc = avatarType === 'doctor' ? doctorAvatar : boyDoctorAvatar;
   const syncGuardRef = React.useRef(createCloudSyncGuard());
   const isApplyingRemoteRef = React.useRef(false);
   const lastLocalChangeAtRef = React.useRef<number | null>(null);
@@ -618,6 +622,7 @@ export default function App() {
         onResetData={handleResetData}
         onExportData={handleExportData}
         onImportData={handleImportData}
+        avatarSrc={avatarSrc}
       />
 
       {/* Main Content Area */}
@@ -629,6 +634,8 @@ export default function App() {
             goals={goals}
             setActiveTab={setActiveTab}
             onOpenLogModal={() => setIsLogModalOpen(true)}
+            avatarType={avatarType}
+            onAvatarTypeChange={setAvatarType}
           />
         )}
         {activeTab === 'timer' && (

@@ -13,6 +13,8 @@ interface DashboardProps {
   goals?: StudyGoal[];
   setActiveTab: (tab: ActiveTab) => void;
   onOpenLogModal: () => void;
+  avatarType: 'doctor' | 'boy';
+  onAvatarTypeChange: (type: 'doctor' | 'boy') => void;
 }
 
 export const Dashboard: React.FC<DashboardProps> = ({
@@ -21,6 +23,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
   goals = [],
   setActiveTab,
   onOpenLogModal,
+  avatarType,
+  onAvatarTypeChange,
 }) => {
   const { currentStreak, bestStreak } = calculateStreaks(sessions);
   const dailyAvgMinutes = getDailyAverage(sessions);
@@ -130,7 +134,12 @@ export const Dashboard: React.FC<DashboardProps> = ({
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, ease: 'easeOut' }}
       >
-        <StudentIdCard sessions={sessions} subjects={subjects} />
+        <StudentIdCard
+          sessions={sessions}
+          subjects={subjects}
+          avatarType={avatarType}
+          onAvatarTypeChange={onAvatarTypeChange}
+        />
       </motion.div>
 
       {/* Welcome & Quick CTA Banner */}

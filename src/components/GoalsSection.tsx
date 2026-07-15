@@ -41,7 +41,68 @@ export const GoalsSection: React.FC<GoalsSectionProps> = ({
     setTargetMinutes(0);
   };
 
-  // Calculate progress for each goal
+  const getCompletionWindow = (goal: StudyGoal) => {
+    if (goal.type === 'daily') return 'last 30 days';
+    if (goal.type === 'weekly') return 'last 12 weeks';
+    return 'last 6 months';
+  };
+
+  const getGoalCompletionCount = (goal: StudyGoal) => {
+    const filteredSessions = sessions.filter((session) =>
+      !goal.subjectId || session.subjectId === goal.subjectId
+    );
+
+    const now = new Date();
+    const counts = new Map<string, number>();
+
+    if (goal.type === 'daily') {
+      for (let i = 29; i >= 0; i -= 1) {
+        const date = new Date(now);
+        date.setDate(date.getDate() - i);
+        const key = date.toISOString().split('T')[0];
+        counts.set(key, 0);
+      }
+
+      filteredSessions.forEach((session) => {
+        if (counts.has(session.date)) {
+          counts.set(session.date, (counts.get(session.date) || 0) + session.durationMinutes);
+        }
+      });
+    } else if (goal.type === 'weekly') {
+      for (let i = 11; i >= 0; i -= 1) {
+        const weekStart = new Date(now);
+        weekStart.setDate(weekStart.getDate() - weekStart.getDay() - 7 * i);
+        const key = weekStart.toISOString().split('T')[0];
+        counts.set(key, 0);
+      }
+
+      filteredSessions.forEach((session) => {
+        const sessionDate = new Date(session.date);
+        const weekStart = new Date(sessionDate);
+        weekStart.setDate(sessionDate.getDate() - sessionDate.getDay());
+        const key = weekStart.toISOString().split('T')[0];
+        if (counts.has(key)) {
+          counts.set(key, (counts.get(key) || 0) + session.durationMinutes);
+        }
+      });
+    } else {
+      for (let i = 5; i >= 0; i -= 1) {
+        const month = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        const key = `${month.getFullYear()}-${String(month.getMonth() + 1).padStart(2, '0')}`;
+        counts.set(key, 0);
+      }
+
+      filteredSessions.forEach((session) => {
+        const monthKey = session.date.substring(0, 7);
+        if (counts.has(monthKey)) {
+          counts.set(monthKey, (counts.get(monthKey) || 0) + session.durationMinutes);
+        }
+      });
+    }
+
+    return Array.from(counts.values()).filter((minutes) => minutes >= goal.targetMinutes).length;
+  };
+
   const todayStr = new Date().toISOString().split('T')[0];
 
   const getGoalProgress = (goal: StudyGoal) => {
@@ -178,6 +239,8 @@ export const GoalsSection: React.FC<GoalsSectionProps> = ({
               const sub = subjects.find(s => s.id === goal.subjectId);
               const { currentMins, percentage } = getGoalProgress(goal);
               const isCompleted = currentMins >= goal.targetMinutes;
+              const completionCount = getGoalCompletionCount(goal);
+              const completionWindow = getCompletionWindow(goal);
 
               return (
                 <div
@@ -193,7 +256,7 @@ export const GoalsSection: React.FC<GoalsSectionProps> = ({
                           isCompleted ? 'bg-emerald-500/20 text-emerald-400' : 'bg-indigo-500/20 text-indigo-400'
                         }`}
                       >
-                        {isCompleted ? <CheckCircle2 className="w-5 h-5" /> : <Target className="w-5 h-5" />}
+                        {isCompleted ? <Award className="w-5 h-5" /> : <Target className="w-5 h-5" />}
                       </div>
                       <div>
                         <div className="flex items-center gap-2">
@@ -227,6 +290,13 @@ export const GoalsSection: React.FC<GoalsSectionProps> = ({
                         <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
+                  </div>
+
+                  <div className="mb-4 flex items-center gap-2 text-sm text-slate-300">
+                    <Award className="w-4 h-4 text-amber-400" />
+                    <span>
+                      Completed {completionCount} {completionCount === 1 ? 'time' : 'times'} over the {completionWindow}.
+                    </span>
                   </div>
 
                   {/* Progress bar */}

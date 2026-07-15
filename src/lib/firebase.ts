@@ -42,6 +42,7 @@ export {
   getDocs,
   updateDoc,
   arrayUnion,
+  arrayRemove,
   query,
   where,
   onSnapshot

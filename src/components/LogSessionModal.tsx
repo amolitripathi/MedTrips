@@ -21,6 +21,8 @@ export const LogSessionModal: React.FC<LogSessionModalProps> = ({
   const [selectedPaperId, setSelectedPaperId] = useState(selectedSubject?.papers[0]?.id || '');
 
   const [date, setDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [startTime, setStartTime] = useState('08:00');
+  const [endTime, setEndTime] = useState('09:00');
   const [hours, setHours] = useState<number>(1);
   const [minutes, setMinutes] = useState<number>(0);
   const [notes, setNotes] = useState('');
@@ -38,11 +40,28 @@ export const LogSessionModal: React.FC<LogSessionModalProps> = ({
 
   if (!isOpen) return null;
 
+  const calculateDurationFromTimes = (start: string, end: string) => {
+    const [startH, startM] = start.split(':').map(Number);
+    const [endH, endM] = end.split(':').map(Number);
+    const startTotal = startH * 60 + startM;
+    const endTotal = endH * 60 + endM;
+    if (endTotal < startTotal) {
+      return (24 * 60) - startTotal + endTotal;
+    }
+    return endTotal - startTotal;
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const totalMinutes = (Number(hours) * 60) + Number(minutes);
+    let totalMinutes = (Number(hours) * 60) + Number(minutes);
+    const timeBasedMinutes = calculateDurationFromTimes(startTime, endTime);
+
+    if (timeBasedMinutes > 0) {
+      totalMinutes = timeBasedMinutes;
+    }
+
     if (totalMinutes <= 0) {
-      alert('Please enter a valid study duration.');
+      alert('Please enter a valid study duration or time range.');
       return;
     }
 
@@ -50,6 +69,8 @@ export const LogSessionModal: React.FC<LogSessionModalProps> = ({
       subjectId: selectedSubjectId,
       paperId: selectedPaperId || 'general',
       date,
+      startTime,
+      endTime,
       durationMinutes: totalMinutes,
       notes: notes.trim() || undefined,
     });
@@ -134,6 +155,35 @@ export const LogSessionModal: React.FC<LogSessionModalProps> = ({
               className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
               required
             />
+          </div>
+
+          {/* Time range */}
+          <div>
+            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5 flex items-center gap-1.5">
+              <Clock className="w-3.5 h-3.5 text-indigo-400" /> Session Time
+            </label>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-[10px] text-slate-400 mb-1">Start</label>
+                <input
+                  type="time"
+                  value={startTime}
+                  onChange={(e) => setStartTime(e.target.value)}
+                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-[10px] text-slate-400 mb-1">End</label>
+                <input
+                  type="time"
+                  value={endTime}
+                  onChange={(e) => setEndTime(e.target.value)}
+                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  required
+                />
+              </div>
+            </div>
           </div>
 
           {/* Duration */}

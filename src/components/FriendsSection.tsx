@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { User } from '../lib/firebase';
-import { db, collection, doc, getDoc, setDoc, updateDoc, arrayUnion, query, where, getDocs } from '../lib/firebase';
-import { Users, UserPlus, Trophy, Flame, Clock, Award, CheckCircle, Search, Sparkles } from 'lucide-react';
+import { db, collection, doc, getDoc, setDoc, updateDoc, arrayUnion, arrayRemove, query, where, getDocs } from '../lib/firebase';
+import { Users, UserPlus, Trophy, Flame, Clock, Award, CheckCircle, Search, Sparkles, Trash2, ChevronRight } from 'lucide-react';
 import { StudySession } from '../types';
 
 interface FriendsSectionProps {
@@ -21,6 +21,7 @@ interface FriendProfile {
 
 export const FriendsSection: React.FC<FriendsSectionProps> = ({ currentUser, sessions, onOpenAuth }) => {
   const [friends, setFriends] = useState<FriendProfile[]>([]);
+  const [selectedFriend, setSelectedFriend] = useState<FriendProfile | null>(null);
   const [friendEmailInput, setFriendEmailInput] = useState('');
   const [searchStatus, setSearchStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [loading, setLoading] = useState(false);
@@ -80,11 +81,13 @@ export const FriendsSection: React.FC<FriendsSectionProps> = ({ currentUser, ses
             setFriends(friendProfiles);
           } else {
             // Add some sample mock friends if no friends added yet, for great out-of-the-box experience
-            setFriends([
+            const sampleFriends: FriendProfile[] = [
               { uid: 'mock-1', displayName: 'Dr. Sarah Jenkins', email: 'sarah@med.edu', totalStudyMinutes: 2840, streak: 14 },
               { uid: 'mock-2', displayName: 'Alex Chen (Resident)', email: 'alex@med.edu', totalStudyMinutes: 2150, streak: 9 },
               { uid: 'mock-3', displayName: 'Priya Sharma', email: 'priya@med.edu', totalStudyMinutes: 1920, streak: 6 },
-            ]);
+            ];
+            setFriends(sampleFriends);
+            setSelectedFriend(sampleFriends[0]);
           }
         }
       } catch (err) {
@@ -130,17 +133,20 @@ export const FriendsSection: React.FC<FriendsSectionProps> = ({ currentUser, ses
         friends: arrayUnion(friendData.uid)
       });
 
+      const newFriend: FriendProfile = {
+        uid: friendData.uid,
+        displayName: friendData.displayName,
+        email: friendData.email,
+        totalStudyMinutes: friendData.totalStudyMinutes || 0,
+        streak: friendData.streak || 3,
+        photoURL: friendData.photoURL
+      };
+
       setFriends(prev => [
         ...prev.filter(f => f.uid !== friendData.uid),
-        {
-          uid: friendData.uid,
-          displayName: friendData.displayName,
-          email: friendData.email,
-          totalStudyMinutes: friendData.totalStudyMinutes || 0,
-          streak: friendData.streak || 3,
-          photoURL: friendData.photoURL
-        }
+        newFriend
       ]);
+      setSelectedFriend(newFriend);
 
       setFriendEmailInput('');
       setSearchStatus({ type: 'success', message: `Successfully added ${friendData.displayName} to your study circle!` });
@@ -160,6 +166,26 @@ export const FriendsSection: React.FC<FriendsSectionProps> = ({ currentUser, ses
     },
     ...friends.map(f => ({ ...f, isMe: false }))
   ].sort((a, b) => b.totalStudyMinutes - a.totalStudyMinutes);
+
+  const handleRemoveFriend = async (friendId: string) => {
+    if (!currentUser) {
+      setFriends(prev => prev.filter(f => f.uid !== friendId));
+      return;
+    }
+
+    try {
+      const userRef = doc(db, 'users', currentUser.uid);
+      await updateDoc(userRef, {
+        friends: arrayRemove(friendId)
+      });
+      setFriends(prev => prev.filter(f => f.uid !== friendId));
+      if (selectedFriend?.uid === friendId) {
+        setSelectedFriend(null);
+      }
+    } catch (err) {
+      console.error('Error removing friend:', err);
+    }
+  };
 
   return (
     <div className="max-w-5xl mx-auto space-y-8 pb-12">
@@ -254,14 +280,18 @@ export const FriendsSection: React.FC<FriendsSectionProps> = ({ currentUser, ses
           {leaderboard.map((user, idx) => {
             const hours = (user.totalStudyMinutes / 60).toFixed(1);
             const rank = idx + 1;
+            const isSelected = selectedFriend?.uid === user.uid;
             return (
               <div
                 key={user.uid}
-                className={`flex items-center justify-between p-4 rounded-2xl border transition ${
+                className={`flex items-center justify-between p-4 rounded-2xl border transition cursor-pointer ${
                   user.isMe
                     ? 'bg-indigo-950/40 border-indigo-500/50 shadow-md shadow-indigo-950/50'
+                    : isSelected
+                    ? 'bg-indigo-900/70 border-indigo-500/60 shadow-lg shadow-indigo-950/20'
                     : 'bg-slate-800/50 border-slate-700/60 hover:bg-slate-800'
                 }`}
+                onClick={() => !user.isMe && setSelectedFriend(user as FriendProfile)}
               >
                 <div className="flex items-center space-x-4">
                   <div className={`w-8 h-8 rounded-xl flex items-center justify-center font-bold text-sm ${
@@ -287,15 +317,95 @@ export const FriendsSection: React.FC<FriendsSectionProps> = ({ currentUser, ses
                   </div>
                 </div>
 
-                <div className="text-right">
-                  <div className="text-base font-bold text-indigo-300">{hours} hrs</div>
-                  <div className="text-[11px] text-slate-500">{user.totalStudyMinutes} mins total</div>
+                <div className="text-right flex items-center gap-3">
+                  <div>
+                    <div className="text-base font-bold text-indigo-300">{hours} hrs</div>
+                    <div className="text-[11px] text-slate-500">{user.totalStudyMinutes} mins total</div>
+                  </div>
+                  {!user.isMe && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleRemoveFriend(user.uid);
+                      }}
+                      className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-rose-500/15 text-rose-300 hover:bg-rose-500/20 text-[11px] font-semibold transition"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      Remove
+                    </button>
+                  )}
                 </div>
               </div>
             );
           })}
         </div>
       </div>
+
+      {selectedFriend && (
+        <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl text-white">
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-6">
+            <div>
+              <h3 className="text-lg font-bold">Friend Profile</h3>
+              <p className="text-sm text-slate-400">Tap a friend to view their detailed study profile.</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setSelectedFriend(null)}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-800/80 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs font-semibold transition"
+            >
+              Close
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="bg-slate-950/40 border border-slate-800 rounded-3xl p-5">
+              <div className="flex items-center gap-4">
+                <div className="w-14 h-14 rounded-2xl bg-indigo-500/20 flex items-center justify-center text-indigo-300 text-lg font-bold">
+                  {selectedFriend.displayName.charAt(0)}
+                </div>
+                <div>
+                  <div className="text-sm font-semibold text-white">{selectedFriend.displayName}</div>
+                  <div className="text-xs text-slate-400">{selectedFriend.email}</div>
+                </div>
+              </div>
+              <div className="mt-5 space-y-3 text-sm text-slate-300">
+                <div className="flex items-center justify-between">
+                  <span>Study Hours</span>
+                  <span className="font-semibold text-white">{(selectedFriend.totalStudyMinutes / 60).toFixed(1)}h</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span>Current Streak</span>
+                  <span className="font-semibold text-white">{selectedFriend.streak} days</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span>Profile Status</span>
+                  <span className="font-semibold text-emerald-300">Active</span>
+                </div>
+              </div>
+            </div>
+            <div className="md:col-span-2 bg-slate-950/40 border border-slate-800 rounded-3xl p-5 space-y-4">
+              <div className="flex items-center justify-between text-slate-400 text-xs uppercase tracking-wide">
+                <span>Study highlight</span>
+                <span className="text-slate-500">Leaderboard details</span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="bg-slate-900 border border-slate-800 rounded-3xl p-4">
+                  <div className="text-xs text-slate-400">Total Minutes</div>
+                  <div className="text-2xl font-bold text-indigo-300">{selectedFriend.totalStudyMinutes}</div>
+                </div>
+                <div className="bg-slate-900 border border-slate-800 rounded-3xl p-4">
+                  <div className="text-xs text-slate-400">Study Tier</div>
+                  <div className="text-2xl font-bold text-amber-300">{selectedFriend.totalStudyMinutes > 2400 ? 'Elite' : selectedFriend.totalStudyMinutes > 1200 ? 'Rising' : 'Active'}</div>
+                </div>
+              </div>
+              <div className="text-sm text-slate-300">
+                This profile section helps you compare study patterns and stay motivated with a quick peer summary.
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

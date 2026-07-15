@@ -1,7 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { ActiveTab } from '../types';
 import { Clock, BarChart3, BookOpen, Calendar, LayoutDashboard, Plus, RotateCcw, Download, Upload, Target, Trophy, FileText, CheckSquare, Users, ChevronDown, Link2 } from 'lucide-react';
-import websiteLogo from '../assets/images/website_logo_1783751587633.jpg';
 
 interface NavbarProps {
   activeTab: ActiveTab;
@@ -10,6 +9,7 @@ interface NavbarProps {
   onResetData: () => void;
   onExportData: () => void;
   onImportData: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  avatarSrc: string;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -19,6 +19,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onResetData,
   onExportData,
   onImportData,
+  avatarSrc,
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDesktopMenuOpen, setIsDesktopMenuOpen] = useState(false);
@@ -66,8 +67,8 @@ export const Navbar: React.FC<NavbarProps> = ({
             <div className="flex items-center space-x-3 cursor-pointer" onClick={() => setActiveTab('dashboard')}>
               <div className="w-10 h-10 rounded-xl overflow-hidden shadow-lg shadow-indigo-500/25 border border-indigo-500/30 flex-shrink-0">
                 <img
-                  src={websiteLogo}
-                  alt="MedTrips Logo"
+                  src={avatarSrc}
+                  alt="MedTrips Student ID Avatar"
                   className="w-full h-full object-cover"
                   referrerPolicy="no-referrer"
                 />

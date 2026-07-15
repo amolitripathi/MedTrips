@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160">
+  <defs>
+    <linearGradient id="skin" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#f7c6a7" />
+      <stop offset="100%" stop-color="#e0a37f" />
+    </linearGradient>
+    <linearGradient id="hair" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#3b4252" />
+      <stop offset="100%" stop-color="#2e3440" />
+    </linearGradient>
+  </defs>
+  <circle cx="80" cy="80" r="78" fill="#0f172a" />
+  <path d="M105 54c0 13-11 24-25 24s-25-11-25-24 11-24 25-24 25 11 25 24z" fill="url(#skin)" />
+  <path d="M55 64c0-16 17-28 25-28s25 12 25 28" fill="url(#hair)" />
+  <path d="M62 74c0 8 8 10 18 10s18-2 18-10" fill="#fff" opacity="0.9" />
+  <path d="M64 98c5 3 13 4 16 4s11-1 16-4" fill="#81614a" />
+  <path d="M60 72a5 5 0 1 1 0-10 5 5 0 0 1 0 10zm40 0a5 5 0 1 1 0-10 5 5 0 0 1 0 10z" fill="#1f2937" />
+  <path d="M52 102c0 0 10-11 28-11s28 11 28 11" fill="none" stroke="#1f2937" stroke-width="4" stroke-linecap="round" />
+  <path d="M45 108c-4 18-4 42-4 42h78s0-25-4-42" fill="#1f2937" />
+  <path d="M47 118c0 0 12-8 23-8s23 8 23 8" fill="#38bdf8" />
+  <path d="M60 108h40v22H60z" fill="#f8fafc" />
+  <path d="M62 110h8v10h-8z" fill="#38bdf8" />
+  <path d="M90 110h8v10h-8z" fill="#38bdf8" />
+</svg>
