@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Subject, StudySession, ActiveTab, StudyGoal } from '../types';
+import { Subject, StudySession, ActiveTab, StudyGoal, StudentProfile, RevisionItem } from '../types';
 import { calculateStreaks, getDailyAverage, getSubjectStats, formatDuration, getDailyStats } from '../utils/studyStats';
 import { Flame, Clock, Award, TrendingUp, BookOpen, ArrowRight, Plus, Calendar, Play, ChevronLeft, ChevronRight } from 'lucide-react';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell } from 'recharts';
@@ -15,6 +15,9 @@ interface DashboardProps {
   onOpenLogModal: () => void;
   avatarType: 'doctor' | 'boy';
   onAvatarTypeChange: (type: 'doctor' | 'boy') => void;
+  studentProfile: StudentProfile;
+  onStudentProfileChange: (profile: StudentProfile) => void;
+  revisions: RevisionItem[];
 }
 
 export const Dashboard: React.FC<DashboardProps> = ({
@@ -25,6 +28,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
   onOpenLogModal,
   avatarType,
   onAvatarTypeChange,
+  studentProfile,
+  onStudentProfileChange,
+  revisions,
 }) => {
   const { currentStreak, bestStreak } = calculateStreaks(sessions);
   const dailyAvgMinutes = getDailyAverage(sessions);
@@ -69,8 +75,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
   // Chart view days or line mode
   const [dashViewDays, setDashViewDays] = useState<number | 'line'>(7);
+  const [dashWindowOffset, setDashWindowOffset] = useState(0);
   const chartDaysCount = typeof dashViewDays === 'number' ? dashViewDays : 30;
-  const dailyStatsData = getDailyStats(sessions, chartDaysCount);
+  const dailyStatsData = getDailyStats(sessions, chartDaysCount, dashWindowOffset);
   const lineChartData = [...sessions]
     .sort((a, b) => a.createdAt - b.createdAt)
     .map((s, idx) => {
@@ -139,6 +146,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
           subjects={subjects}
           avatarType={avatarType}
           onAvatarTypeChange={onAvatarTypeChange}
+          studentProfile={studentProfile}
+          onStudentProfileChange={onStudentProfileChange}
         />
       </motion.div>
 
@@ -180,6 +189,39 @@ export const Dashboard: React.FC<DashboardProps> = ({
               <Plus className="w-4 h-4" />
               <span>Log Manual Time</span>
             </button>
+          </div>
+        </div>
+      </motion.div>
+
+      {/* Centered view shortcuts rail */}
+      <motion.div
+        initial={{ opacity: 0, y: 15 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, delay: 0.13, ease: 'easeOut' }}
+        className="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-xl text-white"
+      >
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+          <div>
+            <div className="text-xs uppercase tracking-[0.22em] text-slate-400 font-semibold">All Views</div>
+            <div className="text-sm text-slate-200 mt-1">Fast navigation to every section from the dashboard center.</div>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 w-full md:w-auto">
+            {[
+              ['timer', 'Study Timer'],
+              ['analytics', 'Stats & Graphs'],
+              ['revision', 'Revision Queue'],
+              ['history', 'Logs History'],
+              ['calendar', 'Calendar'],
+              ['subjects', 'Subjects'],
+            ].map(([id, label]) => (
+              <button
+                key={id}
+                onClick={() => setActiveTab(id as ActiveTab)}
+                className="rounded-xl border border-slate-700 bg-slate-800/80 px-3 py-2 text-xs font-medium text-slate-200 hover:border-indigo-500 hover:text-white transition"
+              >
+                {label}
+              </button>
+            ))}
           </div>
         </div>
       </motion.div>
@@ -314,11 +356,14 @@ export const Dashboard: React.FC<DashboardProps> = ({
               <h3 className="text-lg font-bold">Study Trend & Analytics</h3>
               <p className="text-xs text-slate-400">Study hours overview</p>
             </div>
-            <div className="flex items-center space-x-1 bg-slate-800 p-1 rounded-xl">
+            <div className="flex items-center space-x-1 bg-slate-800 p-1 rounded-xl flex-wrap gap-1">
               {[7, 14, 30, 60].map((days) => (
                 <button
                   key={days}
-                  onClick={() => setDashViewDays(days)}
+                  onClick={() => {
+                    setDashViewDays(days);
+                    setDashWindowOffset(0);
+                  }}
                   className={`px-2.5 py-1 rounded-lg text-xs font-medium transition ${
                     dashViewDays === days ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'
                   }`}
@@ -327,54 +372,75 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 </button>
               ))}
               <button
-                onClick={() => setDashViewDays('line')}
+                onClick={() => {
+                  setDashViewDays('line');
+                  setDashWindowOffset(0);
+                }}
                 className={`px-2.5 py-1 rounded-lg text-xs font-medium transition ${
                   dashViewDays === 'line' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'
                 }`}
               >
                 Line
               </button>
+              {dashViewDays === 30 && (
+                <>
+                  <button
+                    onClick={() => setDashWindowOffset(prev => prev + 30)}
+                    className="px-2.5 py-1 rounded-lg text-xs font-medium transition text-slate-300 hover:text-white"
+                  >
+                    ← Previous
+                  </button>
+                  <button
+                    onClick={() => setDashWindowOffset(prev => Math.max(0, prev - 30))}
+                    className="px-2.5 py-1 rounded-lg text-xs font-medium transition text-slate-300 hover:text-white"
+                  >
+                    Next →
+                  </button>
+                </>
+              )}
             </div>
           </div>
 
-          <div className="h-64 w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              {dashViewDays === 'line' ? (
-                <LineChart data={lineChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
-                  <XAxis dataKey="entryNum" stroke="#64748b" fontSize={11} tickLine={false} />
-                  <YAxis stroke="#64748b" fontSize={12} tickLine={false} />
-                  <Tooltip
-                    content={({ active, payload }) => {
-                      if (active && payload && payload.length) {
-                        const data = payload[0].payload;
-                        return (
-                          <div className="bg-slate-900 border border-slate-700 p-3 rounded-xl shadow-xl text-xs space-y-1">
-                            <div className="font-bold text-indigo-400">{data.subjectName}</div>
-                            <div className="text-slate-300">Date: {data.date}</div>
-                            <div className="text-slate-300">Duration: {data.hours} hrs ({data.minutes} mins)</div>
-                            {data.notes && <div className="text-slate-400 italic mt-1">"{data.notes}"</div>}
-                          </div>
-                        );
-                      }
-                      return null;
-                    }}
-                  />
-                  <Line type="monotone" dataKey="hours" stroke="#6366f1" strokeWidth={3} dot={{ fill: '#6366f1', r: 4 }} activeDot={{ r: 7 }} />
-                </LineChart>
-              ) : (
-                <BarChart data={dailyStatsData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
-                  <XAxis dataKey="formattedDate" stroke="#64748b" fontSize={11} tickLine={false} />
-                  <YAxis stroke="#64748b" fontSize={12} tickLine={false} />
-                  <Tooltip
-                    contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '0.75rem', color: '#fff' }}
-                    formatter={(val: number) => [`${val} hrs`, 'Study Time']}
-                  />
-                  <Bar dataKey="hours" fill="#6366f1" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              )}
-            </ResponsiveContainer>
+          <div className="h-72 w-full overflow-x-auto rounded-2xl border border-slate-800 bg-slate-950/40">
+            <div className="min-w-[900px] h-72">
+              <ResponsiveContainer width="100%" height="100%">
+                {dashViewDays === 'line' ? (
+                  <LineChart data={lineChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
+                    <XAxis dataKey="entryNum" stroke="#64748b" fontSize={11} tickLine={false} interval={0} angle={-20} textAnchor="end" height={60} />
+                    <YAxis stroke="#64748b" fontSize={12} tickLine={false} />
+                    <Tooltip
+                      content={({ active, payload }) => {
+                        if (active && payload && payload.length) {
+                          const data = payload[0].payload;
+                          return (
+                            <div className="bg-slate-900 border border-slate-700 p-3 rounded-xl shadow-xl text-xs space-y-1">
+                              <div className="font-bold text-indigo-400">{data.subjectName}</div>
+                              <div className="text-slate-300">Date: {data.date}</div>
+                              <div className="text-slate-300">Duration: {data.hours} hrs ({data.minutes} mins)</div>
+                              {data.notes && <div className="text-slate-400 italic mt-1">"{data.notes}"</div>}
+                            </div>
+                          );
+                        }
+                        return null;
+                      }}
+                    />
+                    <Line type="monotone" dataKey="hours" stroke="#6366f1" strokeWidth={3} dot={{ fill: '#6366f1', r: 4 }} activeDot={{ r: 7 }} />
+                  </LineChart>
+                ) : (
+                  <BarChart data={dailyStatsData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
+                    <XAxis dataKey="formattedDate" stroke="#64748b" fontSize={11} tickLine={false} interval={0} angle={-20} textAnchor="end" height={60} />
+                    <YAxis stroke="#64748b" fontSize={12} tickLine={false} />
+                    <Tooltip
+                      contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '0.75rem', color: '#fff' }}
+                      formatter={(value) => [`${value ?? 0} hrs`, 'Study Time']}
+                    />
+                    <Bar dataKey="hours" fill="#6366f1" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                )}
+              </ResponsiveContainer>
+            </div>
           </div>
         </div>
 

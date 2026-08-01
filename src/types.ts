@@ -23,6 +23,29 @@ export interface StudySession {
   createdAt: number;
 }
 
+export type RevisionStage = 'first' | 'second' | 'third' | 'monthly';
+
+export interface RevisionItem {
+  id: string;
+  subjectId: string;
+  paperId: string;
+  paperName: string;
+  topic: string;
+  stage: RevisionStage;
+  lastStudiedAt: number;
+  nextRevisionAt: string;
+}
+
+export interface StudentProfile {
+  name: string;
+  year: string;
+  studentId: string;
+  college: string;
+  curriculum: string;
+  curriculumTime: string;
+  dream: string;
+}
+
 export type TimerMode = 'pomodoro' | 'shortBreak' | 'longBreak' | 'countdown' | 'stopwatch';
 
 export interface TimerSettings {
@@ -102,5 +125,5 @@ export interface ExamDeadline {
   createdAt: number;
 }
 
-export type ActiveTab = 'dashboard' | 'timer' | 'analytics' | 'history' | 'subjects' | 'goals' | 'gamification' | 'notes' | 'calendar' | 'todos' | 'friends' | 'links';
+export type ActiveTab = 'dashboard' | 'timer' | 'analytics' | 'history' | 'subjects' | 'goals' | 'gamification' | 'notes' | 'calendar' | 'todos' | 'friends' | 'links' | 'revision';
 

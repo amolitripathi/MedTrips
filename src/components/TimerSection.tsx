@@ -19,16 +19,41 @@ export const TimerSection: React.FC<TimerSectionProps> = ({
   onAddSession,
   onNavigateToStats,
 }) => {
-  const [mode, setMode] = useState<TimerMode>('pomodoro');
+  const getSavedTimerSnapshot = () => {
+    try {
+      const saved = localStorage.getItem('study_tracker_timer_snapshot');
+      return saved ? JSON.parse(saved) as {
+        mode?: TimerMode;
+        timeLeft?: number;
+        stopwatchSeconds?: number;
+        isRunning?: boolean;
+        updatedAt?: number;
+        customMinutes?: number;
+      } : {};
+    } catch {
+      return {};
+    }
+  };
+
+  const [mode, setMode] = useState<TimerMode>(() => {
+    const saved = getSavedTimerSnapshot().mode;
+    return saved || 'pomodoro';
+  });
   const [selectedSubjectId, setSelectedSubjectId] = useState(subjects[0]?.id || '');
   const selectedSubject = subjects.find(s => s.id === selectedSubjectId);
   const [selectedPaperId, setSelectedPaperId] = useState(selectedSubject?.papers[0]?.id || '');
 
   // Custom countdown / timer duration state in seconds
-  const [customMinutes, setCustomMinutes] = useState(25);
-  const [timeLeft, setTimeLeft] = useState(timerSettings.pomodoroMinutes * 60);
-  const [isRunning, setIsRunning] = useState(false);
-  const [stopwatchSeconds, setStopwatchSeconds] = useState(0);
+  const [customMinutes, setCustomMinutes] = useState<number>(() => {
+    const saved = getSavedTimerSnapshot().customMinutes;
+    return typeof saved === 'number' && Number.isFinite(saved) ? saved : 25;
+  });
+  const [timeLeft, setTimeLeft] = useState<number>(() => {
+    const saved = getSavedTimerSnapshot().timeLeft;
+    return typeof saved === 'number' && Number.isFinite(saved) && saved > 0 ? saved : timerSettings.pomodoroMinutes * 60;
+  });
+  const [isRunning, setIsRunning] = useState<boolean>(() => Boolean(getSavedTimerSnapshot().isRunning));
+  const [stopwatchSeconds, setStopwatchSeconds] = useState<number>(0);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [alertTone, setAlertTone] = useState<'bell' | 'chime' | 'beep' | 'none'>('bell');
   const [showSettings, setShowSettings] = useState(false);
@@ -42,6 +67,31 @@ export const TimerSection: React.FC<TimerSectionProps> = ({
   const lastUpdateTimeRef = useRef<number | null>(null);
   const timerCardRef = useRef<HTMLDivElement | null>(null);
   const intervalRef = useRef<number | null>(null);
+  const runningStartedAtRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    const saved = getSavedTimerSnapshot();
+    const restoreSeconds = Math.max(0, Math.floor(((Date.now() - (saved.updatedAt || Date.now())) / 1000)));
+
+    if (saved.isRunning && typeof saved.timeLeft === 'number' && restoreSeconds > 0) {
+      if (saved.mode === 'stopwatch') {
+        setStopwatchSeconds(prev => prev + restoreSeconds);
+      } else {
+        setTimeLeft(prev => Math.max(0, prev - restoreSeconds));
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem('study_tracker_timer_snapshot', JSON.stringify({
+      mode,
+      isRunning,
+      timeLeft,
+      stopwatchSeconds,
+      customMinutes,
+      updatedAt: Date.now(),
+    }));
+  }, [mode, isRunning, timeLeft, stopwatchSeconds, customMinutes]);
 
   // Stop ambient sound on unmount
   useEffect(() => {
@@ -156,7 +206,7 @@ export const TimerSection: React.FC<TimerSectionProps> = ({
         sourceBuffer.loop = true;
 
         const filter = ctx.createBiquadFilter();
-        if (type === 'rain' || type === 'piano') {
+        if (type === 'rain') {
           filter.type = 'lowpass';
           filter.frequency.setValueAtTime(1000, ctx.currentTime);
         } else if (type === 'brown') {
@@ -194,13 +244,21 @@ export const TimerSection: React.FC<TimerSectionProps> = ({
 
   // Initialize time when mode changes
   useEffect(() => {
-    setIsRunning(false);
     if (mode === 'pomodoro') {
-      setTimeLeft(timerSettings.pomodoroMinutes * 60);
+      const persisted = Number(localStorage.getItem('study_tracker_timer_time_left'));
+      if (!Number.isFinite(persisted) || persisted <= 0 || persisted > timerSettings.pomodoroMinutes * 60) {
+        setTimeLeft(timerSettings.pomodoroMinutes * 60);
+      }
     } else if (mode === 'shortBreak') {
-      setTimeLeft(timerSettings.shortBreakMinutes * 60);
+      const persisted = Number(localStorage.getItem('study_tracker_timer_time_left'));
+      if (!Number.isFinite(persisted) || persisted <= 0 || persisted > timerSettings.shortBreakMinutes * 60) {
+        setTimeLeft(timerSettings.shortBreakMinutes * 60);
+      }
     } else if (mode === 'longBreak') {
-      setTimeLeft(timerSettings.longBreakMinutes * 60);
+      const persisted = Number(localStorage.getItem('study_tracker_timer_time_left'));
+      if (!Number.isFinite(persisted) || persisted <= 0 || persisted > timerSettings.longBreakMinutes * 60) {
+        setTimeLeft(timerSettings.longBreakMinutes * 60);
+      }
     } else if (mode === 'countdown') {
       setTimeLeft(customMinutes * 60);
     } else if (mode === 'stopwatch') {
@@ -251,6 +309,7 @@ export const TimerSection: React.FC<TimerSectionProps> = ({
 
     if (!isRunning) return;
 
+    runningStartedAtRef.current = Date.now();
     lastUpdateTimeRef.current = Date.now();
 
     intervalRef.current = window.setInterval(() => {
@@ -259,10 +318,11 @@ export const TimerSection: React.FC<TimerSectionProps> = ({
       lastUpdateTimeRef.current = now;
 
       if (mode === 'stopwatch') {
-        setStopwatchSeconds(prev => prev + elapsed);
+        setStopwatchSeconds(prev => (typeof prev === 'number' ? prev : 0) + elapsed);
       } else {
         setTimeLeft(prev => {
-          const next = prev - elapsed;
+          const currentTime = typeof prev === 'number' ? prev : 0;
+          const next = currentTime - elapsed;
           if (next <= 0) {
             if (intervalRef.current) {
               window.clearInterval(intervalRef.current);
@@ -307,7 +367,14 @@ export const TimerSection: React.FC<TimerSectionProps> = ({
     };
   }, [isRunning, mode, selectedSubjectId, selectedPaperId, timerSettings, customMinutes, onAddSession]);
 
-  const toggleTimer = () => setIsRunning(!isRunning);
+  const toggleTimer = () => {
+    if (isRunning) {
+      setIsRunning(false);
+      runningStartedAtRef.current = null;
+      return;
+    }
+    setIsRunning(true);
+  };
 
   const resetTimer = () => {
     setIsRunning(false);
@@ -329,7 +396,8 @@ export const TimerSection: React.FC<TimerSectionProps> = ({
                            mode === 'shortBreak' ? timerSettings.shortBreakMinutes * 60 :
                            mode === 'longBreak' ? timerSettings.longBreakMinutes * 60 :
                            customMinutes * 60;
-      const elapsed = totalSeconds - timeLeft;
+      const currentTimeLeft = typeof timeLeft === 'number' ? timeLeft : 0;
+      const elapsed = totalSeconds - currentTimeLeft;
       durationMins = Math.round(elapsed / 60);
     }
 
@@ -354,14 +422,16 @@ export const TimerSection: React.FC<TimerSectionProps> = ({
   // Format display time
   const formatTimeDisplay = () => {
     if (mode === 'stopwatch') {
-      const mins = Math.floor(stopwatchSeconds / 60);
-      const secs = stopwatchSeconds % 60;
+      const currentStopwatchSeconds = typeof stopwatchSeconds === 'number' ? stopwatchSeconds : 0;
+      const mins = Math.floor(currentStopwatchSeconds / 60);
+      const secs = currentStopwatchSeconds % 60;
       const hrs = Math.floor(mins / 60);
       const remMins = mins % 60;
       return `${hrs > 0 ? `${hrs.toString().padStart(2, '0')}:` : ''}${remMins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
     } else {
-      const mins = Math.floor(timeLeft / 60);
-      const secs = timeLeft % 60;
+      const currentTimeLeft = typeof timeLeft === 'number' ? timeLeft : 0;
+      const mins = Math.floor(currentTimeLeft / 60);
+      const secs = currentTimeLeft % 60;
       const hrs = Math.floor(mins / 60);
       const remMins = mins % 60;
       return `${hrs > 0 ? `${hrs.toString().padStart(2, '0')}:` : ''}${remMins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
@@ -375,7 +445,8 @@ export const TimerSection: React.FC<TimerSectionProps> = ({
                   mode === 'longBreak' ? timerSettings.longBreakMinutes * 60 :
                   customMinutes * 60;
     if (total === 0) return 0;
-    return ((total - timeLeft) / total) * 100;
+    const currentTimeLeft = typeof timeLeft === 'number' ? timeLeft : 0;
+    return ((total - currentTimeLeft) / total) * 100;
   };
 
   return (

@@ -1,4 +1,4 @@
-import { StudySession, Subject } from '../types';
+import { StudySession, Subject, RevisionItem } from '../types';
 
 export interface DailyStat {
   date: string;
@@ -110,8 +110,8 @@ export const calculateStreaks = (sessions: StudySession[]): { currentStreak: num
   return { currentStreak: Math.max(currentStreak, 0), bestStreak: Math.max(bestStreak, currentStreak, 0) };
 };
 
-// Calculate daily stats for the last N days (default 30)
-export const getDailyStats = (sessions: StudySession[], daysCount = 30): DailyStat[] => {
+// Calculate daily stats for a rolling N-day window (default 30)
+export const getDailyStats = (sessions: StudySession[], daysCount = 30, startOffsetDays = 0): DailyStat[] => {
   const result: DailyStat[] = [];
   const sessionMap = new Map<string, number>();
 
@@ -120,9 +120,13 @@ export const getDailyStats = (sessions: StudySession[], daysCount = 30): DailySt
     sessionMap.set(s.date, current + s.durationMinutes);
   });
 
-  for (let i = daysCount - 1; i >= 0; i--) {
-    const d = new Date();
-    d.setDate(d.getDate() - i);
+  const windowStart = new Date();
+  windowStart.setHours(0, 0, 0, 0);
+  windowStart.setDate(windowStart.getDate() - startOffsetDays - daysCount + 1);
+
+  for (let i = 0; i < daysCount; i++) {
+    const d = new Date(windowStart);
+    d.setDate(windowStart.getDate() + i);
     const dateStr = d.toISOString().split('T')[0];
     const formattedDate = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
     const minutes = sessionMap.get(dateStr) || 0;
@@ -300,4 +304,47 @@ export const getDailyAverage = (sessions: StudySession[]): number => {
   const totalMinutes = sessions.reduce((acc, s) => acc + s.durationMinutes, 0);
   if (uniqueDates.size === 0) return 0;
   return Math.round(totalMinutes / uniqueDates.size);
+};
+
+export const getRevisionItems = (sessions: StudySession[], subjects: Subject[]): RevisionItem[] => {
+  const grouped = new Map<string, StudySession[]>();
+
+  sessions.forEach(session => {
+    const key = `${session.subjectId}:${session.paperId}`;
+    const existing = grouped.get(key) || [];
+    existing.push(session);
+    grouped.set(key, existing);
+  });
+
+  const revisionStages = [
+    { stage: 'first' as const, offsetDays: 1 },
+    { stage: 'second' as const, offsetDays: 3 },
+    { stage: 'third' as const, offsetDays: 7 },
+    { stage: 'monthly' as const, offsetDays: 30 },
+  ];
+
+  const results: RevisionItem[] = [];
+
+  grouped.forEach((topicSessions, key) => {
+    const sorted = [...topicSessions].sort((a, b) => a.createdAt - b.createdAt);
+    const lastSession = sorted[sorted.length - 1];
+    const subject = subjects.find(sub => sub.id === lastSession.subjectId);
+    const paper = subject?.papers.find(p => p.id === lastSession.paperId);
+
+    revisionStages.forEach(({ stage, offsetDays }) => {
+      const nextRevisionAt = new Date(lastSession.createdAt + offsetDays * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+      results.push({
+        id: `${key}-${stage}-${lastSession.createdAt}`,
+        subjectId: lastSession.subjectId,
+        paperId: lastSession.paperId,
+        paperName: paper?.name || 'General Paper',
+        topic: `${subject?.name || 'General Study'} • ${paper?.name || 'General Paper'}`,
+        stage,
+        lastStudiedAt: lastSession.createdAt,
+        nextRevisionAt,
+      });
+    });
+  });
+
+  return results.sort((a, b) => new Date(a.nextRevisionAt).getTime() - new Date(b.nextRevisionAt).getTime());
 };

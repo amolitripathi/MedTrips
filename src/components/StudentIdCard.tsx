@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { StudySession, Subject } from '../types';
+import { StudySession, Subject, StudentProfile } from '../types';
 import { formatDuration } from '../utils/studyStats';
 import { Award, Flame, User, Calendar, BookOpen, ShieldCheck, Edit2, Check, Sparkles, Trophy } from 'lucide-react';
 import doctorAvatar from '../assets/images/animated_doctor_avatar_1783755080501.jpg';
@@ -10,17 +10,12 @@ interface StudentIdCardProps {
   subjects: Subject[];
   avatarType: 'doctor' | 'boy';
   onAvatarTypeChange: (type: 'doctor' | 'boy') => void;
+  studentProfile: StudentProfile;
+  onStudentProfileChange: (profile: StudentProfile) => void;
 }
 
-export const StudentIdCard: React.FC<StudentIdCardProps> = ({ sessions, sessions: _sessions, subjects, avatarType, onAvatarTypeChange }) => {
+export const StudentIdCard: React.FC<StudentIdCardProps> = ({ sessions, sessions: _sessions, subjects, avatarType, onAvatarTypeChange, studentProfile, onStudentProfileChange }) => {
   const [isEditing, setIsEditing] = useState(false);
-  const [name, setName] = useState('Amoli Tripathi');
-  const [year, setYear] = useState('2nd Year MBBS');
-  const [studentId, setStudentId] = useState('MED-2026-AMOLI');
-  const [college, setCollege] = useState('Medical College & University');
-  const [curriculum, setCurriculum] = useState('Clinical rotations, pathology, pharmacology');
-  const [curriculumTime, setCurriculumTime] = useState('18 hrs/week');
-  const [dream, setDream] = useState('Become a leading physician-scientist');
   const avatarMap = {
     doctor: doctorAvatar,
     boy: boyDoctorAvatar,
@@ -79,10 +74,10 @@ export const StudentIdCard: React.FC<StudentIdCardProps> = ({ sessions, sessions
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 pb-6 border-b border-indigo-500/20">
         <div className="flex items-center space-x-4">
           <div className="relative group">
-            <div className="absolute -inset-0.5 bg-gradient-to-r from-indigo-500 to-teal-500 rounded-2xl blur opacity-75 group-hover:opacity-100 transition duration-1000 group-hover:duration-200 animate-pulse"></div>
+            <div className="absolute -inset-0.5 bg-gradient-to-r from-indigo-500/40 to-teal-500/40 rounded-2xl blur opacity-70"></div>
             <img
               src={avatar}
-              alt={name}
+              alt={studentProfile.name}
               className="relative w-20 h-20 sm:w-24 sm:h-24 rounded-2xl object-cover border-2 border-indigo-400 shadow-xl"
             />
             <div className="absolute -bottom-2 -right-2 bg-emerald-500 text-slate-950 p-1.5 rounded-full shadow-lg z-10" title="Active Student">
@@ -99,15 +94,15 @@ export const StudentIdCard: React.FC<StudentIdCardProps> = ({ sessions, sessions
               <div className="space-y-3 mt-2">
                 <input
                   type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
+                  value={studentProfile.name}
+                  onChange={(e) => onStudentProfileChange({ ...studentProfile, name: e.target.value })}
                   className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-1 text-base font-bold text-white w-full"
                   placeholder="Full Name"
                 />
                 <input
                   type="text"
-                  value={year}
-                  onChange={(e) => setYear(e.target.value)}
+                  value={studentProfile.year}
+                  onChange={(e) => onStudentProfileChange({ ...studentProfile, year: e.target.value })}
                   className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-1 text-xs text-slate-300 w-full"
                   placeholder="Year / Course"
                 />
@@ -129,31 +124,31 @@ export const StudentIdCard: React.FC<StudentIdCardProps> = ({ sessions, sessions
                 </div>
                 <input
                   type="text"
-                  value={curriculum}
-                  onChange={(e) => setCurriculum(e.target.value)}
+                  value={studentProfile.curriculum}
+                  onChange={(e) => onStudentProfileChange({ ...studentProfile, curriculum: e.target.value })}
                   className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-1 text-sm text-white w-full"
                   placeholder="Curriculum focus (e.g. rotations, pathology)"
                 />
                 <input
                   type="text"
-                  value={curriculumTime}
-                  onChange={(e) => setCurriculumTime(e.target.value)}
+                  value={studentProfile.curriculumTime}
+                  onChange={(e) => onStudentProfileChange({ ...studentProfile, curriculumTime: e.target.value })}
                   className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-1 text-sm text-white w-full"
                   placeholder="Curriculum time (e.g. 18 hrs/week)"
                 />
                 <textarea
                   rows={2}
-                  value={dream}
-                  onChange={(e) => setDream(e.target.value)}
+                  value={studentProfile.dream}
+                  onChange={(e) => onStudentProfileChange({ ...studentProfile, dream: e.target.value })}
                   className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white w-full resize-none"
                   placeholder="Your dream / future goal"
                 />
               </div>
             ) : (
               <div>
-                <h2 className="text-2xl sm:text-3xl font-black tracking-tight mt-1">{name}</h2>
-                <p className="text-indigo-300 text-sm font-medium mt-0.5">{year} • Medical Student</p>
-                <p className="text-xs text-slate-400 mt-1">{college}</p>
+                <h2 className="text-2xl sm:text-3xl font-black tracking-tight mt-1">{studentProfile.name}</h2>
+                <p className="text-indigo-300 text-sm font-medium mt-0.5">{studentProfile.year} • Medical Student</p>
+                <p className="text-xs text-slate-400 mt-1">{studentProfile.college}</p>
               </div>
             )}
           </div>
@@ -168,7 +163,7 @@ export const StudentIdCard: React.FC<StudentIdCardProps> = ({ sessions, sessions
             <span>{isEditing ? 'Save ID Card' : 'Edit Info'}</span>
           </button>
           <div className="text-right text-xs font-mono text-slate-400 bg-slate-950/60 px-3 py-1.5 rounded-xl border border-slate-800">
-            ID: <span className="text-indigo-300 font-bold">{studentId}</span>
+            ID: <span className="text-indigo-300 font-bold">{studentProfile.studentId}</span>
           </div>
         </div>
       </div>
@@ -198,7 +193,7 @@ export const StudentIdCard: React.FC<StudentIdCardProps> = ({ sessions, sessions
             <span className="text-xs uppercase font-semibold">Dream</span>
             <Trophy className="w-4 h-4 text-amber-400" />
           </div>
-          <div className="text-sm font-semibold text-white">{dream}</div>
+          <div className="text-sm font-semibold text-white">{studentProfile.dream}</div>
           <div className="text-[10px] text-slate-400 mt-2">Write your future vision once and update it anytime.</div>
         </div>
 
@@ -207,8 +202,8 @@ export const StudentIdCard: React.FC<StudentIdCardProps> = ({ sessions, sessions
             <span className="text-xs uppercase font-semibold">Curriculum</span>
             <Sparkles className="w-4 h-4 text-teal-400" />
           </div>
-          <div className="text-sm font-semibold text-white">{curriculum}</div>
-          <div className="text-[10px] text-slate-400 mt-2">Study commitment: {curriculumTime}</div>
+          <div className="text-sm font-semibold text-white">{studentProfile.curriculum}</div>
+          <div className="text-[10px] text-slate-400 mt-2">Study commitment: {studentProfile.curriculumTime}</div>
         </div>
       </div>
     </div>

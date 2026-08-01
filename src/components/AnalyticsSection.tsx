@@ -31,10 +31,11 @@ interface AnalyticsSectionProps {
 
 export const AnalyticsSection: React.FC<AnalyticsSectionProps> = ({ sessions, subjects }) => {
   const [dailyViewDays, setDailyViewDays] = useState<number | 'line'>(30);
+  const [monthlyWindowOffset, setMonthlyWindowOffset] = useState(0);
 
   const { currentStreak, bestStreak } = calculateStreaks(sessions);
   const dailyAvg = getDailyAverage(sessions);
-  const dailyStats = getDailyStats(sessions, typeof dailyViewDays === 'number' ? dailyViewDays : 30);
+  const dailyStats = getDailyStats(sessions, typeof dailyViewDays === 'number' ? dailyViewDays : 30, monthlyWindowOffset);
   const dailyStatsWithGaps = getDailyStatsWithGaps(sessions);
   const monthlyStats = getMonthlyStats(sessions);
   const yearlyStats = getYearlyStats(sessions);
@@ -42,6 +43,14 @@ export const AnalyticsSection: React.FC<AnalyticsSectionProps> = ({ sessions, su
   const paperStats = getPaperStats(sessions, subjects);
 
   const totalMinutesAll = sessions.reduce((acc, s) => acc + s.durationMinutes, 0);
+  const paperChartData = [...paperStats]
+    .sort((a, b) => b.minutes - a.minutes)
+    .slice(0, 10)
+    .map((paper) => ({
+      paperName: paper.paperName,
+      hours: paper.hours,
+      minutes: paper.minutes,
+    }));
 
   return (
     <div className="space-y-8 max-w-7xl mx-auto text-white">
@@ -113,7 +122,10 @@ export const AnalyticsSection: React.FC<AnalyticsSectionProps> = ({ sessions, su
             {[7, 30].map((days) => (
               <button
                 key={days}
-                onClick={() => setDailyViewDays(days)}
+                onClick={() => {
+                  setDailyViewDays(days);
+                  setMonthlyWindowOffset(0);
+                }}
                 className={`px-2.5 py-1 rounded-lg text-xs font-medium transition cursor-pointer ${
                   dailyViewDays === days ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'
                 }`}
@@ -122,13 +134,32 @@ export const AnalyticsSection: React.FC<AnalyticsSectionProps> = ({ sessions, su
               </button>
             ))}
             <button
-              onClick={() => setDailyViewDays('line')}
+              onClick={() => {
+                setDailyViewDays('line');
+                setMonthlyWindowOffset(0);
+              }}
               className={`px-2.5 py-1 rounded-lg text-xs font-medium transition cursor-pointer ${
                 dailyViewDays === 'line' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'
               }`}
             >
               All Entries (Line)
             </button>
+            {dailyViewDays === 30 && (
+              <>
+                <button
+                  onClick={() => setMonthlyWindowOffset(prev => prev + 30)}
+                  className="px-2.5 py-1 rounded-lg text-xs font-medium transition cursor-pointer text-slate-300 hover:text-white"
+                >
+                  ← Previous
+                </button>
+                <button
+                  onClick={() => setMonthlyWindowOffset(prev => Math.max(0, prev - 30))}
+                  className="px-2.5 py-1 rounded-lg text-xs font-medium transition cursor-pointer text-slate-300 hover:text-white"
+                >
+                  Next →
+                </button>
+              </>
+            )}
           </div>
         </div>
 
@@ -262,29 +293,26 @@ export const AnalyticsSection: React.FC<AnalyticsSectionProps> = ({ sessions, su
           <div className="mb-6">
             <h3 className="text-lg font-bold flex items-center gap-2">
               <FileText className="w-5 h-5 text-violet-400" />
-              Paper-wise Breakdown
+              Paper-wise Hours
             </h3>
-            <p className="text-xs text-slate-400">Detailed study time per paper / module</p>
+            <p className="text-xs text-slate-400">Hours spent per paper, shown separately for quick scan and comparison</p>
           </div>
 
-          <div className="space-y-3 max-h-[380px] overflow-y-auto pr-1">
-            {paperStats.map((pap) => (
-              <div key={pap.paperId} className="flex items-center justify-between p-3.5 bg-slate-950/50 border border-slate-800 rounded-xl">
-                <div>
-                  <div className="font-semibold text-sm text-white">{pap.paperName}</div>
-                  <div className="text-xs text-slate-400">{pap.subjectName}</div>
-                </div>
-                <div className="text-right space-y-1">
-                  <div className="px-3 py-1 rounded-lg bg-violet-500/10 text-violet-300 text-xs font-semibold border border-violet-500/20 font-mono">
-                    {formatDuration(pap.minutes)}
-                  </div>
-                  <div className="text-[11px] text-slate-400">{pap.percentage}% of total</div>
-                </div>
-              </div>
-            ))}
-            {paperStats.length === 0 && (
-              <div className="text-center py-8 text-slate-500 text-sm">No paper data available</div>
-            )}
+          <div className="h-80 w-full overflow-x-auto rounded-2xl border border-slate-800 bg-slate-950/40">
+            <div className="min-w-[700px] h-80">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={paperChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
+                  <XAxis dataKey="paperName" stroke="#64748b" fontSize={11} tickLine={false} interval={0} angle={-20} textAnchor="end" height={60} />
+                  <YAxis stroke="#64748b" fontSize={12} tickLine={false} />
+                  <Tooltip
+                    contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '0.75rem', color: '#fff' }}
+                    formatter={(value) => [`${value ?? 0} hrs`, 'Time Spent']}
+                  />
+                  <Line type="monotone" dataKey="hours" stroke="#8b5cf6" strokeWidth={3} dot={{ fill: '#8b5cf6', r: 4 }} activeDot={{ r: 7 }} />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
           </div>
         </div>
       </div>

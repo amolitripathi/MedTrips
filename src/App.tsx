@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Subject, StudySession, ActiveTab, TimerSettings, StudyGoal, Badge, Challenge, StudyNote, TodoItem, StudyLink, ExamDeadline } from './types';
+import { Subject, StudySession, ActiveTab, TimerSettings, StudyGoal, Badge, Challenge, StudyNote, TodoItem, StudyLink, ExamDeadline, StudentProfile, RevisionItem } from './types';
 import { DEFAULT_SUBJECTS, DEFAULT_SESSIONS, DEFAULT_TIMER_SETTINGS, DEFAULT_GOALS, DEFAULT_BADGES, DEFAULT_CHALLENGES, DEFAULT_NOTES, DEFAULT_TODOS, DEFAULT_LINKS, DEFAULT_EXAMS } from './data/initialData';
 import doctorAvatar from './assets/images/animated_doctor_avatar_1783755080501.jpg';
 import boyDoctorAvatar from './assets/images/boy_doctor_avatar.svg';
@@ -7,6 +7,7 @@ import { Navbar } from './components/Navbar';
 import { Dashboard } from './components/Dashboard';
 import { TimerSection } from './components/TimerSection';
 import { AnalyticsSection } from './components/AnalyticsSection';
+import { RevisionSection } from './components/RevisionSection';
 import { HistorySection } from './components/HistorySection';
 import { SubjectsSection } from './components/SubjectsSection';
 import { GoalsSection } from './components/GoalsSection';
@@ -30,6 +31,48 @@ export default function App() {
   const [cloudQuotaExhausted, setCloudQuotaExhausted] = useState(false);
   const [isRemoteDataReady, setIsRemoteDataReady] = useState(false);
   const [avatarType, setAvatarType] = useState<'doctor' | 'boy'>('doctor');
+  const [studentProfile, setStudentProfile] = useState<StudentProfile>(() => {
+    const saved = localStorage.getItem('study_tracker_profile');
+    if (saved) {
+      try {
+        return { ...{
+          name: 'Amoli Tripathi',
+          year: '2nd Year MBBS',
+          studentId: 'MED-2026-AMOLI',
+          college: 'Medical College & University',
+          curriculum: 'Clinical rotations, pathology, pharmacology',
+          curriculumTime: '18 hrs/week',
+          dream: 'Become a leading physician-scientist',
+        }, ...JSON.parse(saved) };
+      } catch {
+        return {
+          name: 'Amoli Tripathi',
+          year: '2nd Year MBBS',
+          studentId: 'MED-2026-AMOLI',
+          college: 'Medical College & University',
+          curriculum: 'Clinical rotations, pathology, pharmacology',
+          curriculumTime: '18 hrs/week',
+          dream: 'Become a leading physician-scientist',
+        };
+      }
+    }
+    return {
+      name: 'Amoli Tripathi',
+      year: '2nd Year MBBS',
+      studentId: 'MED-2026-AMOLI',
+      college: 'Medical College & University',
+      curriculum: 'Clinical rotations, pathology, pharmacology',
+      curriculumTime: '18 hrs/week',
+      dream: 'Become a leading physician-scientist',
+    };
+  });
+  const [revisions, setRevisions] = useState<RevisionItem[]>(() => {
+    const saved = localStorage.getItem('study_tracker_revisions');
+    if (saved) {
+      try { return JSON.parse(saved); } catch { return []; }
+    }
+    return [];
+  });
   const avatarSrc = avatarType === 'doctor' ? doctorAvatar : boyDoctorAvatar;
   const syncGuardRef = React.useRef(createCloudSyncGuard());
   const isApplyingRemoteRef = React.useRef(false);
@@ -156,6 +199,8 @@ export default function App() {
     todos,
     links,
     exams,
+    revisions,
+    studentProfile,
   });
 
   const sanitizeForFirestore = <T,>(value: T): T => removeUndefinedDeep(value) as T;
@@ -182,6 +227,8 @@ export default function App() {
       if (Array.isArray(data.todos)) setTodos(data.todos as TodoItem[]);
       if (Array.isArray(data.links)) setLinks(data.links as StudyLink[]);
       if (Array.isArray(data.exams)) setExams(data.exams as ExamDeadline[]);
+      if (Array.isArray(data.revisions)) setRevisions(data.revisions as RevisionItem[]);
+      if (data.studentProfile) setStudentProfile(data.studentProfile as StudentProfile);
       if (remoteUpdatedAt) {
         lastRemoteSnapshotAtRef.current = remoteUpdatedAt;
       }
@@ -306,6 +353,14 @@ export default function App() {
     localStorage.setItem('study_tracker_exams', JSON.stringify(exams));
   }, [exams]);
 
+  useEffect(() => {
+    localStorage.setItem('study_tracker_profile', JSON.stringify(studentProfile));
+  }, [studentProfile]);
+
+  useEffect(() => {
+    localStorage.setItem('study_tracker_revisions', JSON.stringify(revisions));
+  }, [revisions]);
+
   // Save to Firestore when state changes (syncing across devices for the account)
   useEffect(() => {
     if (cloudQuotaExhausted || !currentUser || !isRemoteDataReady || !initialHydrationCompleteRef.current) return;
@@ -347,6 +402,8 @@ export default function App() {
           todos,
           links,
           exams,
+          revisions,
+          studentProfile,
           updatedAt: now,
           updatedBy: currentUser.uid
         }), { merge: true });
@@ -372,9 +429,24 @@ export default function App() {
     };
     const timer = setTimeout(saveToCloud, 1500);
     return () => clearTimeout(timer);
-  }, [subjects, sessions, timerSettings, goals, badges, challenges, notes, todos, links, exams, currentUser, cloudQuotaExhausted, isRemoteDataReady]);
+  }, [subjects, sessions, timerSettings, goals, badges, challenges, notes, todos, links, exams, revisions, studentProfile, currentUser, cloudQuotaExhausted, isRemoteDataReady]);
 
   const { currentStreak: streak } = calculateStreaks(sessions);
+
+  useEffect(() => {
+    setBadges(prev => prev.map(badge => {
+      if (badge.id === 'badge-1' && sessions.length >= badge.requiredValue) {
+        return { ...badge, unlocked: true, unlockedAt: badge.unlockedAt ?? Date.now() };
+      }
+      if (badge.id === 'badge-2' && streak >= badge.requiredValue) {
+        return { ...badge, unlocked: true, unlockedAt: badge.unlockedAt ?? Date.now() };
+      }
+      if (badge.id === 'badge-3' && sessions.reduce((acc, item) => acc + item.durationMinutes, 0) >= badge.requiredValue) {
+        return { ...badge, unlocked: true, unlockedAt: badge.unlockedAt ?? Date.now() };
+      }
+      return badge;
+    }));
+  }, [sessions, streak]);
 
   // Session handlers
   const handleAddSession = (sessionData: Omit<StudySession, 'id' | 'createdAt'>) => {
@@ -385,6 +457,29 @@ export default function App() {
       createdAt: Date.now(),
     };
     setSessions(prev => [newSession, ...prev]);
+
+    const subject = subjects.find(sub => sub.id === sessionData.subjectId);
+    const paper = subject?.papers.find(p => p.id === sessionData.paperId);
+    const revisionDates = [
+      { stage: 'first' as const, offsetDays: 1 },
+      { stage: 'second' as const, offsetDays: 3 },
+      { stage: 'third' as const, offsetDays: 7 },
+      { stage: 'monthly' as const, offsetDays: 30 },
+    ];
+
+    setRevisions(prev => [
+      ...revisionDates.map(({ stage, offsetDays }) => ({
+        id: `rev-${newSession.id}-${stage}`,
+        subjectId: sessionData.subjectId,
+        paperId: sessionData.paperId,
+        paperName: paper?.name || 'General Paper',
+        topic: `${subject?.name || 'General Study'} • ${paper?.name || 'General Paper'}`,
+        stage,
+        lastStudiedAt: newSession.createdAt,
+        nextRevisionAt: new Date(newSession.createdAt + offsetDays * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      })),
+      ...prev,
+    ]);
   };
 
   const handleDeleteSession = (id: string) => {
@@ -557,6 +652,7 @@ export default function App() {
       setNotes(DEFAULT_NOTES);
       setTodos(DEFAULT_TODOS);
       setLinks(DEFAULT_LINKS);
+      setRevisions([]);
       localStorage.clear();
     }
   };
@@ -636,6 +732,9 @@ export default function App() {
             onOpenLogModal={() => setIsLogModalOpen(true)}
             avatarType={avatarType}
             onAvatarTypeChange={setAvatarType}
+            studentProfile={studentProfile}
+            onStudentProfileChange={setStudentProfile}
+            revisions={revisions}
           />
         )}
         {activeTab === 'timer' && (
@@ -649,6 +748,9 @@ export default function App() {
         )}
         {activeTab === 'analytics' && (
           <AnalyticsSection sessions={sessions} subjects={subjects} />
+        )}
+        {activeTab === 'revision' && (
+          <RevisionSection revisions={revisions} subjects={subjects} sessions={sessions} />
         )}
         {activeTab === 'history' && (
           <HistorySection

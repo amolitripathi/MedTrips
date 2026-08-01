@@ -34,6 +34,7 @@ export const Navbar: React.FC<NavbarProps> = ({
     { id: 'calendar', label: 'Calendar View', category: 'Core & Study', icon: <Calendar className="w-4 h-4 text-blue-400" /> },
     { id: 'todos', label: 'To-Do List', category: 'Core & Study', icon: <CheckSquare className="w-4 h-4 text-purple-400" /> },
     { id: 'analytics', label: 'Stats & Graphs', category: 'Analytics & Resources', icon: <BarChart3 className="w-4 h-4 text-emerald-400" /> },
+    { id: 'revision', label: 'Revision Queue', category: 'Analytics & Resources', icon: <RotateCcw className="w-4 h-4 text-violet-400" /> },
     { id: 'subjects', label: 'Subjects & Papers', category: 'Analytics & Resources', icon: <BookOpen className="w-4 h-4 text-rose-400" /> },
     { id: 'goals', label: 'Study Goals', category: 'Analytics & Resources', icon: <Target className="w-4 h-4 text-cyan-400" /> },
     { id: 'notes', label: 'Notes', category: 'Analytics & Resources', icon: <FileText className="w-4 h-4 text-orange-400" /> },
@@ -100,7 +101,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   <div className="absolute right-0 mt-2 w-80 bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl p-4 z-50 backdrop-blur-xl space-y-3 animate-in fade-in zoom-in duration-200">
                     <div className="flex items-center justify-between pb-2 border-b border-slate-800">
                       <span className="text-xs font-bold text-slate-300 uppercase tracking-wider">Expandable Views Directory</span>
-                      <span className="text-[10px] bg-indigo-500/20 text-indigo-300 px-2 py-0.5 rounded-full font-semibold">12 Views</span>
+                      <span className="text-[10px] bg-indigo-500/20 text-indigo-300 px-2 py-0.5 rounded-full font-semibold">13 Views</span>
                     </div>
 
                     {/* Search Input */}
