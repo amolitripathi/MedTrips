@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Subject, StudySession, ActiveTab, StudyGoal, StudentProfile, RevisionItem } from '../types';
-import { calculateStreaks, getDailyAverage, getSubjectStats, formatDuration, getDailyStats } from '../utils/studyStats';
-import { Flame, Clock, Award, TrendingUp, BookOpen, ArrowRight, Plus, Calendar, Play, ChevronLeft, ChevronRight } from 'lucide-react';
-import { BarChart, Bar, LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell } from 'recharts';
+import { calculateStreaks, getDailyAverage, getSubjectStats, formatDuration, getDailyStats, getDailyStatsWithGaps, getPaperStats, getWeeklyProductiveStats } from '../utils/studyStats';
+import { Flame, Clock, Award, TrendingUp, BookOpen, ArrowRight, Plus, Calendar, Play, ChevronLeft, ChevronRight, ChartColumnBig } from 'lucide-react';
+import { BarChart, Bar, LineChart, Line, AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell } from 'recharts';
 import { StudentIdCard } from './StudentIdCard';
 import confetti from 'canvas-confetti';
 import { motion } from 'motion/react';
@@ -35,6 +35,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const { currentStreak, bestStreak } = calculateStreaks(sessions);
   const dailyAvgMinutes = getDailyAverage(sessions);
   const subjectStats = getSubjectStats(sessions, subjects);
+  const paperStats = getPaperStats(sessions, subjects);
+  const weeklyProductiveStats = getWeeklyProductiveStats(sessions);
 
   const todayDate = new Date();
   const [dashYear, setDashYear] = useState(todayDate.getFullYear());
@@ -78,21 +80,25 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const [dashWindowOffset, setDashWindowOffset] = useState(0);
   const chartDaysCount = typeof dashViewDays === 'number' ? dashViewDays : 30;
   const dailyStatsData = getDailyStats(sessions, chartDaysCount, dashWindowOffset);
-  const lineChartData = [...sessions]
-    .sort((a, b) => a.createdAt - b.createdAt)
-    .map((s, idx) => {
-      const sub = subjects.find(sub => sub.id === s.subjectId);
-      return {
-        id: s.id,
-        entryNum: `#${idx + 1}`,
-        date: s.date,
-        formattedDate: `${s.date} (#${idx + 1})`,
-        subjectName: sub?.name || 'General Study',
-        hours: Number((s.durationMinutes / 60).toFixed(2)),
-        minutes: s.durationMinutes,
-        notes: s.notes
-      };
-    });
+  const dailyEntriesLineData = getDailyStatsWithGaps(sessions);
+  const subjectChartData = [...subjectStats]
+    .sort((a, b) => b.minutes - a.minutes)
+    .map((sub) => ({
+      subjectName: sub.subjectName,
+      hours: sub.hours,
+      minutes: sub.minutes,
+      color: sub.color,
+      percentage: sub.percentage,
+    }));
+  const paperChartData = [...paperStats]
+    .sort((a, b) => b.minutes - a.minutes)
+    .slice(0, 10)
+    .map((paper) => ({
+      paperName: paper.paperName,
+      hours: paper.hours,
+      minutes: paper.minutes,
+      percentage: paper.percentage,
+    }));
 
   // Calendar mini map
   const sessionMap: Record<string, number> = {};
@@ -349,12 +355,11 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
       {/* Main Charts & Breakdown Section */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Weekly Trend Bar Chart */}
         <div className="lg:col-span-2 bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl text-white flex flex-col justify-between">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
             <div>
               <h3 className="text-lg font-bold">Study Trend & Analytics</h3>
-              <p className="text-xs text-slate-400">Study hours overview</p>
+              <p className="text-xs text-slate-400">Daily study pattern with a cleaner, more polished panel</p>
             </div>
             <div className="flex items-center space-x-1 bg-slate-800 p-1 rounded-xl flex-wrap gap-1">
               {[7, 14, 30, 60].map((days) => (
@@ -401,13 +406,19 @@ export const Dashboard: React.FC<DashboardProps> = ({
             </div>
           </div>
 
-          <div className="h-72 w-full overflow-x-auto rounded-2xl border border-slate-800 bg-slate-950/40">
-            <div className="min-w-[900px] h-72">
+          <div className="h-80 w-full overflow-x-auto rounded-2xl border border-slate-800 bg-slate-950/40">
+            <div className="min-w-[900px] h-80">
               <ResponsiveContainer width="100%" height="100%">
                 {dashViewDays === 'line' ? (
-                  <LineChart data={lineChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                  <AreaChart data={dailyEntriesLineData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="dashboardTrendFill" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#6366f1" stopOpacity={0.55} />
+                        <stop offset="95%" stopColor="#6366f1" stopOpacity={0.03} />
+                      </linearGradient>
+                    </defs>
                     <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
-                    <XAxis dataKey="entryNum" stroke="#64748b" fontSize={11} tickLine={false} interval={0} angle={-20} textAnchor="end" height={60} />
+                    <XAxis dataKey="formattedDate" stroke="#64748b" fontSize={11} tickLine={false} interval={Math.max(0, Math.floor(dailyEntriesLineData.length / 10))} />
                     <YAxis stroke="#64748b" fontSize={12} tickLine={false} />
                     <Tooltip
                       content={({ active, payload }) => {
@@ -415,18 +426,17 @@ export const Dashboard: React.FC<DashboardProps> = ({
                           const data = payload[0].payload;
                           return (
                             <div className="bg-slate-900 border border-slate-700 p-3 rounded-xl shadow-xl text-xs space-y-1">
-                              <div className="font-bold text-indigo-400">{data.subjectName}</div>
+                              <div className="font-bold text-indigo-400">Daily Study Entry</div>
                               <div className="text-slate-300">Date: {data.date}</div>
-                              <div className="text-slate-300">Duration: {data.hours} hrs ({data.minutes} mins)</div>
-                              {data.notes && <div className="text-slate-400 italic mt-1">"{data.notes}"</div>}
+                              <div className="text-slate-300">Duration: {data.hours} hrs ({Math.round(data.hours * 60)} mins)</div>
                             </div>
                           );
                         }
                         return null;
                       }}
                     />
-                    <Line type="monotone" dataKey="hours" stroke="#6366f1" strokeWidth={3} dot={{ fill: '#6366f1', r: 4 }} activeDot={{ r: 7 }} />
-                  </LineChart>
+                    <Area type="monotone" dataKey="hours" stroke="#6366f1" strokeWidth={3} fill="url(#dashboardTrendFill)" dot={{ fill: '#6366f1', r: 3 }} activeDot={{ r: 6 }} />
+                  </AreaChart>
                 ) : (
                   <BarChart data={dailyStatsData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
@@ -436,7 +446,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                       contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '0.75rem', color: '#fff' }}
                       formatter={(value) => [`${value ?? 0} hrs`, 'Study Time']}
                     />
-                    <Bar dataKey="hours" fill="#6366f1" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="hours" fill="#6366f1" radius={[6, 6, 0, 0]} />
                   </BarChart>
                 )}
               </ResponsiveContainer>
@@ -444,43 +454,42 @@ export const Dashboard: React.FC<DashboardProps> = ({
           </div>
         </div>
 
-        {/* Subject-wise distribution summary */}
         <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl text-white flex flex-col justify-between">
-          <div>
-            <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center justify-between mb-4">
+            <div>
               <h3 className="text-lg font-bold">Subject Breakdown</h3>
-              <button
-                onClick={() => setActiveTab('subjects')}
-                className="text-xs font-medium text-indigo-400 hover:text-indigo-300 flex items-center gap-1 transition"
-              >
-                <span>Manage</span>
-                <ArrowRight className="w-3.5 h-3.5" />
-              </button>
+              <p className="text-xs text-slate-400">Time distribution across your major subjects</p>
             </div>
-            <p className="text-xs text-slate-400 mb-4">Time distribution across subjects</p>
+            <button
+              onClick={() => setActiveTab('subjects')}
+              className="text-xs font-medium text-indigo-400 hover:text-indigo-300 flex items-center gap-1 transition"
+            >
+              <span>Manage</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
 
-            <div className="space-y-3.5">
-              {subjectStats.slice(0, 4).map((sub) => (
-                <div key={sub.subjectId} className="space-y-1">
-                  <div className="flex items-center justify-between text-xs font-medium">
-                    <span className="flex items-center gap-2 text-slate-200">
-                      <span className="w-3 h-3 rounded-full" style={{ backgroundColor: sub.color }} />
-                      {sub.subjectName}
-                    </span>
-                    <span className="text-slate-400">{sub.hours}h ({sub.percentage}%)</span>
-                  </div>
-                  <div className="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
-                    <div
-                      className="h-full rounded-full transition-all duration-500"
-                      style={{ width: `${sub.percentage}%`, backgroundColor: sub.color }}
-                    />
-                  </div>
+          <div className="space-y-3.5">
+            {subjectChartData.slice(0, 5).map((sub) => (
+              <div key={sub.subjectName} className="space-y-1.5">
+                <div className="flex items-center justify-between text-xs font-medium">
+                  <span className="flex items-center gap-2 text-slate-200">
+                    <span className="w-3 h-3 rounded-full" style={{ backgroundColor: sub.color }} />
+                    {sub.subjectName}
+                  </span>
+                  <span className="text-slate-400">{sub.hours}h ({sub.percentage}%)</span>
                 </div>
-              ))}
-              {subjectStats.length === 0 && (
-                <div className="text-center py-8 text-slate-500 text-sm">No subjects recorded yet</div>
-              )}
-            </div>
+                <div className="w-full h-2.5 bg-slate-800 rounded-full overflow-hidden">
+                  <div
+                    className="h-full rounded-full transition-all duration-500"
+                    style={{ width: `${sub.percentage}%`, backgroundColor: sub.color }}
+                  />
+                </div>
+              </div>
+            ))}
+            {subjectChartData.length === 0 && (
+              <div className="text-center py-8 text-slate-500 text-sm">No subjects recorded yet</div>
+            )}
           </div>
 
           <div className="mt-6 pt-4 border-t border-slate-800 text-center">
@@ -490,6 +499,58 @@ export const Dashboard: React.FC<DashboardProps> = ({
             >
               View detailed paper-wise reports &rarr;
             </button>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl text-white">
+          <div className="mb-6">
+            <h3 className="text-lg font-bold flex items-center gap-2">
+              <ChartColumnBig className="w-5 h-5 text-emerald-400" />
+              Productive Hours of the Week
+            </h3>
+            <p className="text-xs text-slate-400">See which weekday gives you your strongest study output</p>
+          </div>
+          <div className="h-72 w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={weeklyProductiveStats} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
+                <XAxis dataKey="day" stroke="#64748b" fontSize={11} tickLine={false} />
+                <YAxis stroke="#64748b" fontSize={12} tickLine={false} />
+                <Tooltip
+                  contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '0.75rem', color: '#fff' }}
+                  formatter={(value) => [`${value ?? 0} hrs`, 'Study Time']}
+                />
+                <Bar dataKey="hours" fill="#14b8a6" radius={[6, 6, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl text-white">
+          <div className="mb-6">
+            <h3 className="text-lg font-bold flex items-center gap-2">
+              <BookOpen className="w-5 h-5 text-violet-400" />
+              Paper-wise Study Load
+            </h3>
+            <p className="text-xs text-slate-400">Top papers by logged time, matching the stats view layout</p>
+          </div>
+          <div className="h-72 w-full overflow-x-auto rounded-2xl border border-slate-800 bg-slate-950/40">
+            <div className="min-w-[500px] h-72">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={paperChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
+                  <XAxis dataKey="paperName" stroke="#64748b" fontSize={11} tickLine={false} interval={0} angle={-20} textAnchor="end" height={60} />
+                  <YAxis stroke="#64748b" fontSize={12} tickLine={false} />
+                  <Tooltip
+                    contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '0.75rem', color: '#fff' }}
+                    formatter={(value) => [`${value ?? 0} hrs`, 'Time Spent']}
+                  />
+                  <Line type="monotone" dataKey="hours" stroke="#8b5cf6" strokeWidth={3} dot={{ fill: '#8b5cf6', r: 4 }} activeDot={{ r: 7 }} />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
           </div>
         </div>
       </div>

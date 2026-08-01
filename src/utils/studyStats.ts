@@ -19,6 +19,12 @@ export interface YearlyStat {
   hours: number;
 }
 
+export interface WeeklyProductiveStat {
+  day: string;
+  minutes: number;
+  hours: number;
+}
+
 export interface SubjectStat {
   subjectId: string;
   subjectName: string;
@@ -221,6 +227,25 @@ export const getYearlyStats = (sessions: StudySession[]): YearlyStat[] => {
     const minutes = yearMap.get(year) || 0;
     return {
       year,
+      minutes,
+      hours: Number((minutes / 60).toFixed(1)),
+    };
+  });
+};
+
+export const getWeeklyProductiveStats = (sessions: StudySession[]): WeeklyProductiveStat[] => {
+  const weekdayKeys = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const totals = new Map<string, number>();
+  sessions.forEach(session => {
+    const dayIndex = new Date(`${session.date}T00:00:00`).getDay();
+    const key = weekdayKeys[dayIndex];
+    totals.set(key, (totals.get(key) || 0) + session.durationMinutes);
+  });
+
+  return weekdayKeys.map(day => {
+    const minutes = totals.get(day) || 0;
+    return {
+      day,
       minutes,
       hours: Number((minutes / 60).toFixed(1)),
     };

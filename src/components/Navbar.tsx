@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { ActiveTab } from '../types';
-import { Clock, BarChart3, BookOpen, Calendar, LayoutDashboard, Plus, RotateCcw, Download, Upload, Target, Trophy, FileText, CheckSquare, Users, ChevronDown, Link2 } from 'lucide-react';
+import { ActiveTab, NotificationItem } from '../types';
+import { Clock, BarChart3, BookOpen, Calendar, LayoutDashboard, Plus, RotateCcw, Download, Upload, Target, Trophy, FileText, CheckSquare, Users, ChevronDown, Link2, Bell, X } from 'lucide-react';
 
 interface NavbarProps {
   activeTab: ActiveTab;
@@ -10,6 +10,9 @@ interface NavbarProps {
   onExportData: () => void;
   onImportData: (e: React.ChangeEvent<HTMLInputElement>) => void;
   avatarSrc: string;
+  notifications: NotificationItem[];
+  onRequestNotificationPermission: () => void;
+  onMarkNotificationsRead: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -20,13 +23,18 @@ export const Navbar: React.FC<NavbarProps> = ({
   onExportData,
   onImportData,
   avatarSrc,
+  notifications,
+  onRequestNotificationPermission,
+  onMarkNotificationsRead,
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDesktopMenuOpen, setIsDesktopMenuOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const desktopMenuRef = useRef<HTMLDivElement>(null);
   const mobileMenuRef = useRef<HTMLDivElement>(null);
+  const notificationMenuRef = useRef<HTMLDivElement>(null);
 
   const navItems: { id: ActiveTab; label: string; category: string; icon: React.ReactNode }[] = [
     { id: 'dashboard', label: 'Dashboard', category: 'Core & Study', icon: <LayoutDashboard className="w-4 h-4 text-indigo-400" /> },
@@ -54,10 +62,15 @@ export const Navbar: React.FC<NavbarProps> = ({
       if (mobileMenuRef.current && !mobileMenuRef.current.contains(event.target as Node)) {
         setIsMobileMenuOpen(false);
       }
+      if (notificationMenuRef.current && !notificationMenuRef.current.contains(event.target as Node)) {
+        setIsNotificationOpen(false);
+      }
     };
     document.addEventListener('click', handleClickOutside);
     return () => document.removeEventListener('click', handleClickOutside);
   }, []);
+
+  const unreadCount = notifications.filter(item => !item.isRead).length;
 
   return (
     <header className="bg-slate-900 border-b border-slate-800 sticky top-0 z-40 text-white">
@@ -215,6 +228,63 @@ export const Navbar: React.FC<NavbarProps> = ({
 
           {/* Right Action buttons */}
           <div className="flex items-center space-x-2">
+            <div className="relative" ref={notificationMenuRef}>
+              <button
+                onClick={() => {
+                  setIsNotificationOpen(prev => !prev);
+                  if (unreadCount > 0) {
+                    onMarkNotificationsRead();
+                  }
+                }}
+                className="relative p-2 rounded-lg border border-slate-700 bg-slate-800/80 hover:bg-slate-800 text-slate-200 transition cursor-pointer"
+                title="Notifications"
+              >
+                <Bell className="w-4 h-4" />
+                {unreadCount > 0 && (
+                  <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] rounded-full bg-rose-500 text-[10px] font-bold text-white flex items-center justify-center px-1 border border-slate-900">
+                    {unreadCount}
+                  </span>
+                )}
+              </button>
+
+              {isNotificationOpen && (
+                <div className="absolute right-0 mt-2 w-88 bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl p-3 z-50 backdrop-blur-xl">
+                  <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+                    <div>
+                      <div className="text-xs font-bold text-slate-200 uppercase tracking-wider">Recent notifications</div>
+                      <div className="text-[10px] text-slate-400">Daily reminders and study alerts</div>
+                    </div>
+                    <button
+                      onClick={onRequestNotificationPermission}
+                      className="text-[10px] font-semibold px-2 py-1 rounded-lg bg-indigo-500/15 text-indigo-300 border border-indigo-500/20"
+                    >
+                      Enable
+                    </button>
+                  </div>
+
+                  <div className="mt-2 space-y-2 max-h-72 overflow-y-auto">
+                    {notifications.length === 0 && (
+                      <div className="text-center py-6 text-xs text-slate-500">No notifications yet.</div>
+                    )}
+                    {notifications.map((item) => (
+                      <div key={item.id} className={`rounded-xl border p-2.5 ${item.isRead ? 'border-slate-800 bg-slate-950/40' : 'border-indigo-500/30 bg-indigo-500/10'}`}>
+                        <div className="flex items-start justify-between gap-2">
+                          <div>
+                            <div className="text-xs font-semibold text-white">{item.title}</div>
+                            <div className="text-[11px] text-slate-300 mt-0.5">{item.message}</div>
+                          </div>
+                          <button className="text-slate-400 hover:text-white">
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                        <div className="text-[10px] text-slate-400 mt-1.5">{new Date(item.createdAt).toLocaleString()}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
             <button
               onClick={onOpenLogModal}
               className="flex items-center space-x-1.5 px-3.5 py-2 rounded-lg bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white text-sm font-medium shadow-md shadow-indigo-600/20 transition-all cursor-pointer"

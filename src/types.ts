@@ -44,6 +44,15 @@ export interface StudentProfile {
   curriculum: string;
   curriculumTime: string;
   dream: string;
+  avatarUrl?: string;
+}
+
+export interface NotificationItem {
+  id: string;
+  title: string;
+  message: string;
+  createdAt: number;
+  isRead: boolean;
 }
 
 export type TimerMode = 'pomodoro' | 'shortBreak' | 'longBreak' | 'countdown' | 'stopwatch';

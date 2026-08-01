@@ -22,7 +22,6 @@ export const LogSessionModal: React.FC<LogSessionModalProps> = ({
 
   const [date, setDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [startTime, setStartTime] = useState('08:00');
-  const [endTime, setEndTime] = useState('09:00');
   const [hours, setHours] = useState<number>(1);
   const [minutes, setMinutes] = useState<number>(0);
   const [notes, setNotes] = useState('');
@@ -40,37 +39,36 @@ export const LogSessionModal: React.FC<LogSessionModalProps> = ({
 
   if (!isOpen) return null;
 
-  const calculateDurationFromTimes = (start: string, end: string) => {
+  const formatTime = (totalMinutes: number) => {
+    const normalized = ((totalMinutes % (24 * 60)) + (24 * 60)) % (24 * 60);
+    const hoursValue = Math.floor(normalized / 60);
+    const minutesValue = normalized % 60;
+    return `${String(hoursValue).padStart(2, '0')}:${String(minutesValue).padStart(2, '0')}`;
+  };
+
+  const calculateEndTime = (start: string, durationMins: number) => {
     const [startH, startM] = start.split(':').map(Number);
-    const [endH, endM] = end.split(':').map(Number);
     const startTotal = startH * 60 + startM;
-    const endTotal = endH * 60 + endM;
-    if (endTotal < startTotal) {
-      return (24 * 60) - startTotal + endTotal;
-    }
-    return endTotal - startTotal;
+    return formatTime(startTotal + durationMins);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    let totalMinutes = (Number(hours) * 60) + Number(minutes);
-    const timeBasedMinutes = calculateDurationFromTimes(startTime, endTime);
-
-    if (timeBasedMinutes > 0) {
-      totalMinutes = timeBasedMinutes;
-    }
+    const totalMinutes = (Number(hours) * 60) + Number(minutes);
 
     if (totalMinutes <= 0) {
-      alert('Please enter a valid study duration or time range.');
+      alert('Please enter a valid study duration.');
       return;
     }
+
+    const computedEndTime = calculateEndTime(startTime, totalMinutes);
 
     onAddSession({
       subjectId: selectedSubjectId,
       paperId: selectedPaperId || 'general',
       date,
       startTime,
-      endTime,
+      endTime: computedEndTime,
       durationMinutes: totalMinutes,
       notes: notes.trim() || undefined,
     });
@@ -162,9 +160,9 @@ export const LogSessionModal: React.FC<LogSessionModalProps> = ({
             <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5 flex items-center gap-1.5">
               <Clock className="w-3.5 h-3.5 text-indigo-400" /> Session Time
             </label>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3">
               <div>
-                <label className="block text-[10px] text-slate-400 mb-1">Start</label>
+                <label className="block text-[10px] text-slate-400 mb-1">Start Time</label>
                 <input
                   type="time"
                   value={startTime}
@@ -173,15 +171,9 @@ export const LogSessionModal: React.FC<LogSessionModalProps> = ({
                   required
                 />
               </div>
-              <div>
-                <label className="block text-[10px] text-slate-400 mb-1">End</label>
-                <input
-                  type="time"
-                  value={endTime}
-                  onChange={(e) => setEndTime(e.target.value)}
-                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  required
-                />
+              <div className="rounded-xl border border-slate-700 bg-slate-800/60 px-3 py-2 text-xs text-slate-300">
+                <span className="text-slate-400">Predicted end time:</span>{' '}
+                <span className="font-semibold text-indigo-300">{calculateEndTime(startTime, (Number(hours) * 60) + Number(minutes))}</span>
               </div>
             </div>
           </div>

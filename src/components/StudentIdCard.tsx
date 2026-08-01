@@ -1,9 +1,8 @@
 import React, { useState } from 'react';
 import { StudySession, Subject, StudentProfile } from '../types';
 import { formatDuration } from '../utils/studyStats';
-import { Award, Flame, User, Calendar, BookOpen, ShieldCheck, Edit2, Check, Sparkles, Trophy } from 'lucide-react';
+import { Award, Flame, User, Calendar, BookOpen, ShieldCheck, Edit2, Check, Sparkles, Trophy, ImageUp } from 'lucide-react';
 import doctorAvatar from '../assets/images/animated_doctor_avatar_1783755080501.jpg';
-import boyDoctorAvatar from '../assets/images/boy_doctor_avatar.svg';
 
 interface StudentIdCardProps {
   sessions: StudySession[];
@@ -16,11 +15,7 @@ interface StudentIdCardProps {
 
 export const StudentIdCard: React.FC<StudentIdCardProps> = ({ sessions, sessions: _sessions, subjects, avatarType, onAvatarTypeChange, studentProfile, onStudentProfileChange }) => {
   const [isEditing, setIsEditing] = useState(false);
-  const avatarMap = {
-    doctor: doctorAvatar,
-    boy: boyDoctorAvatar,
-  };
-  const avatar = avatarMap[avatarType];
+  const avatar = studentProfile.avatarUrl || doctorAvatar;
 
   // Calculate highest productive day
   const dailyTotals: Record<string, number> = {};
@@ -106,22 +101,24 @@ export const StudentIdCard: React.FC<StudentIdCardProps> = ({ sessions, sessions
                   className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-1 text-xs text-slate-300 w-full"
                   placeholder="Year / Course"
                 />
-                <div className="grid grid-cols-2 gap-3">
-                  <button
-                    type="button"
-                    onClick={() => onAvatarTypeChange('doctor')}
-                    className={`w-full rounded-2xl border px-3 py-2 text-sm font-medium transition ${avatarType === 'doctor' ? 'border-indigo-400 bg-indigo-500/10 text-white' : 'border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700'}`}
-                  >
-                    Doctor avatar
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => onAvatarTypeChange('boy')}
-                    className={`w-full rounded-2xl border px-3 py-2 text-sm font-medium transition ${avatarType === 'boy' ? 'border-emerald-400 bg-emerald-500/10 text-white' : 'border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700'}`}
-                  >
-                    Boy doctor
-                  </button>
-                </div>
+                <label className="flex items-center gap-2 rounded-2xl border border-slate-700 bg-slate-800 px-3 py-2 text-sm font-medium text-slate-200 hover:bg-slate-700 transition cursor-pointer">
+                  <ImageUp className="w-4 h-4 text-indigo-300" />
+                  Upload profile photo
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      const reader = new FileReader();
+                      reader.onload = () => {
+                        onStudentProfileChange({ ...studentProfile, avatarUrl: String(reader.result) });
+                      };
+                      reader.readAsDataURL(file);
+                    }}
+                  />
+                </label>
                 <input
                   type="text"
                   value={studentProfile.curriculum}

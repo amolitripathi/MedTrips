@@ -35,10 +35,44 @@ export const HistorySection: React.FC<HistorySectionProps> = ({
     return matchesSearch && matchesSubject;
   }).sort((a, b) => b.createdAt - a.createdAt);
 
+  const formatTime = (totalMinutes: number) => {
+    const normalized = ((totalMinutes % (24 * 60)) + (24 * 60)) % (24 * 60);
+    const hoursValue = Math.floor(normalized / 60);
+    const minutesValue = normalized % 60;
+    return `${String(hoursValue).padStart(2, '0')}:${String(minutesValue).padStart(2, '0')}`;
+  };
+
+  const parseTimeToMinutes = (value: string) => {
+    const [hours, minutes] = value.split(':').map(Number);
+    if (Number.isNaN(hours) || Number.isNaN(minutes)) return 0;
+    return hours * 60 + minutes;
+  };
+
+  const syncEditingSessionFromTime = (nextSession: StudySession) => {
+    if (nextSession.startTime && nextSession.endTime) {
+      const endMinutes = parseTimeToMinutes(nextSession.endTime);
+      const startMinutes = parseTimeToMinutes(nextSession.startTime);
+      const durationMinutes = Math.max(1, Math.round((endMinutes - startMinutes + 24 * 60) % (24 * 60)));
+      return { ...nextSession, durationMinutes };
+    }
+
+    if (nextSession.startTime) {
+      const startMinutes = parseTimeToMinutes(nextSession.startTime);
+      const durationMinutes = Math.max(1, nextSession.durationMinutes);
+      return {
+        ...nextSession,
+        endTime: formatTime(startMinutes + durationMinutes),
+      };
+    }
+
+    return nextSession;
+  };
+
   const handleSaveEdit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingSession) return;
-    onUpdateSession(editingSession);
+    const preparedSession = syncEditingSessionFromTime(editingSession);
+    onUpdateSession(preparedSession);
     setEditingSession(null);
   };
 
@@ -114,9 +148,14 @@ export const HistorySection: React.FC<HistorySectionProps> = ({
                       )}
                     </div>
                     {sess.notes && <p className="text-xs text-slate-300">{sess.notes}</p>}
-                    <div className="flex items-center text-xs text-slate-400 gap-1.5 pt-0.5">
+                    <div className="flex items-center text-xs text-slate-400 gap-1.5 pt-0.5 flex-wrap">
                       <Calendar className="w-3.5 h-3.5" />
                       <span>{sess.date}</span>
+                      {sess.startTime && sess.endTime && (
+                        <span className="px-2 py-0.5 rounded bg-slate-800 text-slate-300">
+                          {sess.startTime} – {sess.endTime}
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -175,16 +214,99 @@ export const HistorySection: React.FC<HistorySectionProps> = ({
                 />
               </div>
 
-              <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Duration (Minutes)</label>
-                <input
-                  type="number"
-                  min="1"
-                  value={editingSession.durationMinutes}
-                  onChange={(e) => setEditingSession({ ...editingSession, durationMinutes: parseInt(e.target.value) || 1 })}
-                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white"
-                  required
-                />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Subject</label>
+                  <select
+                    value={editingSession.subjectId}
+                    onChange={(e) => {
+                      const subject = subjects.find(sub => sub.id === e.target.value);
+                      setEditingSession({
+                        ...editingSession,
+                        subjectId: e.target.value,
+                        paperId: subject?.papers[0]?.id || 'general',
+                      });
+                    }}
+                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white"
+                  >
+                    {subjects.map((sub) => (
+                      <option key={sub.id} value={sub.id}>{sub.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Paper / Topic</label>
+                  <select
+                    value={editingSession.paperId}
+                    onChange={(e) => setEditingSession({ ...editingSession, paperId: e.target.value })}
+                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white"
+                  >
+                    {subjects.find(sub => sub.id === editingSession.subjectId)?.papers.map((pap) => (
+                      <option key={pap.id} value={pap.id}>{pap.name}</option>
+                    ))}
+                    {(!subjects.find(sub => sub.id === editingSession.subjectId)?.papers.length) && (
+                      <option value="general">General Study</option>
+                    )}
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Start Time</label>
+                  <input
+                    type="time"
+                    value={editingSession.startTime || '08:00'}
+                    onChange={(e) => {
+                      const startTime = e.target.value;
+                      const nextSession = {
+                        ...editingSession,
+                        startTime,
+                        endTime: editingSession.endTime || formatTime(parseTimeToMinutes(startTime) + editingSession.durationMinutes),
+                      };
+                      setEditingSession(syncEditingSessionFromTime(nextSession));
+                    }}
+                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Duration (Min)</label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={editingSession.durationMinutes}
+                    onChange={(e) => {
+                      const durationMinutes = Math.max(1, parseInt(e.target.value) || 1);
+                      const nextSession = {
+                        ...editingSession,
+                        durationMinutes,
+                        endTime: editingSession.startTime ? formatTime(parseTimeToMinutes(editingSession.startTime) + durationMinutes) : editingSession.endTime,
+                      };
+                      setEditingSession(syncEditingSessionFromTime(nextSession));
+                    }}
+                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">End Time</label>
+                  <input
+                    type="time"
+                    value={editingSession.endTime || '09:00'}
+                    onChange={(e) => {
+                      const endTime = e.target.value;
+                      const nextSession = {
+                        ...editingSession,
+                        endTime,
+                      };
+                      setEditingSession(syncEditingSessionFromTime(nextSession));
+                    }}
+                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white"
+                  />
+                </div>
               </div>
 
               <div>

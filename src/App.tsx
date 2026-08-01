@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Subject, StudySession, ActiveTab, TimerSettings, StudyGoal, Badge, Challenge, StudyNote, TodoItem, StudyLink, ExamDeadline, StudentProfile, RevisionItem } from './types';
-import { DEFAULT_SUBJECTS, DEFAULT_SESSIONS, DEFAULT_TIMER_SETTINGS, DEFAULT_GOALS, DEFAULT_BADGES, DEFAULT_CHALLENGES, DEFAULT_NOTES, DEFAULT_TODOS, DEFAULT_LINKS, DEFAULT_EXAMS } from './data/initialData';
+import { Subject, StudySession, ActiveTab, TimerSettings, StudyGoal, Badge, Challenge, StudyNote, TodoItem, StudyLink, ExamDeadline, StudentProfile, RevisionItem, NotificationItem } from './types';
+import { DEFAULT_SUBJECTS, DEFAULT_SESSIONS, DEFAULT_TIMER_SETTINGS, DEFAULT_GOALS, DEFAULT_BADGES, DEFAULT_CHALLENGES, DEFAULT_NOTES, DEFAULT_TODOS, DEFAULT_LINKS, DEFAULT_EXAMS, DEFAULT_REVISION_ITEMS } from './data/initialData';
 import doctorAvatar from './assets/images/animated_doctor_avatar_1783755080501.jpg';
-import boyDoctorAvatar from './assets/images/boy_doctor_avatar.svg';
 import { Navbar } from './components/Navbar';
 import { Dashboard } from './components/Dashboard';
 import { TimerSection } from './components/TimerSection';
@@ -43,6 +42,7 @@ export default function App() {
           curriculum: 'Clinical rotations, pathology, pharmacology',
           curriculumTime: '18 hrs/week',
           dream: 'Become a leading physician-scientist',
+          avatarUrl: '',
         }, ...JSON.parse(saved) };
       } catch {
         return {
@@ -53,6 +53,7 @@ export default function App() {
           curriculum: 'Clinical rotations, pathology, pharmacology',
           curriculumTime: '18 hrs/week',
           dream: 'Become a leading physician-scientist',
+          avatarUrl: '',
         };
       }
     }
@@ -69,11 +70,18 @@ export default function App() {
   const [revisions, setRevisions] = useState<RevisionItem[]>(() => {
     const saved = localStorage.getItem('study_tracker_revisions');
     if (saved) {
+      try { return JSON.parse(saved); } catch { return DEFAULT_REVISION_ITEMS; }
+    }
+    return DEFAULT_REVISION_ITEMS;
+  });
+  const [notifications, setNotifications] = useState<NotificationItem[]>(() => {
+    const saved = localStorage.getItem('study_tracker_notifications');
+    if (saved) {
       try { return JSON.parse(saved); } catch { return []; }
     }
     return [];
   });
-  const avatarSrc = avatarType === 'doctor' ? doctorAvatar : boyDoctorAvatar;
+  const avatarSrc = studentProfile.avatarUrl || doctorAvatar;
   const syncGuardRef = React.useRef(createCloudSyncGuard());
   const isApplyingRemoteRef = React.useRef(false);
   const lastLocalChangeAtRef = React.useRef<number | null>(null);
@@ -200,6 +208,7 @@ export default function App() {
     links,
     exams,
     revisions,
+    notifications,
     studentProfile,
   });
 
@@ -228,6 +237,7 @@ export default function App() {
       if (Array.isArray(data.links)) setLinks(data.links as StudyLink[]);
       if (Array.isArray(data.exams)) setExams(data.exams as ExamDeadline[]);
       if (Array.isArray(data.revisions)) setRevisions(data.revisions as RevisionItem[]);
+      if (Array.isArray(data.notifications)) setNotifications(data.notifications as NotificationItem[]);
       if (data.studentProfile) setStudentProfile(data.studentProfile as StudentProfile);
       if (remoteUpdatedAt) {
         lastRemoteSnapshotAtRef.current = remoteUpdatedAt;
@@ -238,6 +248,45 @@ export default function App() {
       syncGuardRef.current.endRemoteApply();
     }
   };
+
+  const addNotification = (title: string, message: string) => {
+    markLocalChange();
+    setNotifications(prev => [
+      {
+        id: `notif-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        title,
+        message,
+        createdAt: Date.now(),
+        isRead: false,
+      },
+      ...prev,
+    ].slice(0, 40));
+
+    if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
+      new Notification(title, { body: message });
+    }
+  };
+
+  useEffect(() => {
+    const todayStr = new Date().toISOString().split('T')[0];
+    const reminderKey = `study_tracker_daily_reminder_${todayStr}`;
+
+    const checkDailyReminder = () => {
+      const now = new Date();
+      const currentHour = now.getHours();
+      const currentMinute = now.getMinutes();
+      const hasLoggedToday = sessions.some(item => item.date === todayStr);
+
+      if (currentHour === 23 && currentMinute >= 30 && !hasLoggedToday && !localStorage.getItem(reminderKey)) {
+        addNotification('Daily entry reminder', 'It is 11:30 PM — log your study session for today.');
+        localStorage.setItem(reminderKey, 'sent');
+      }
+    };
+
+    checkDailyReminder();
+    const timer = window.setInterval(checkDailyReminder, 60 * 1000);
+    return () => window.clearInterval(timer);
+  }, [sessions]);
 
   useEffect(() => {
     if (!currentUser) {
@@ -361,6 +410,10 @@ export default function App() {
     localStorage.setItem('study_tracker_revisions', JSON.stringify(revisions));
   }, [revisions]);
 
+  useEffect(() => {
+    localStorage.setItem('study_tracker_notifications', JSON.stringify(notifications));
+  }, [notifications]);
+
   // Save to Firestore when state changes (syncing across devices for the account)
   useEffect(() => {
     if (cloudQuotaExhausted || !currentUser || !isRemoteDataReady || !initialHydrationCompleteRef.current) return;
@@ -403,6 +456,7 @@ export default function App() {
           links,
           exams,
           revisions,
+          notifications,
           studentProfile,
           updatedAt: now,
           updatedBy: currentUser.uid
@@ -652,7 +706,8 @@ export default function App() {
       setNotes(DEFAULT_NOTES);
       setTodos(DEFAULT_TODOS);
       setLinks(DEFAULT_LINKS);
-      setRevisions([]);
+      setRevisions(DEFAULT_REVISION_ITEMS);
+      setNotifications([]);
       localStorage.clear();
     }
   };
@@ -677,6 +732,20 @@ export default function App() {
     a.download = `study_tracker_backup_${new Date().toISOString().split('T')[0]}.json`;
     a.click();
     URL.revokeObjectURL(url);
+  };
+
+  const handleUpdateRevisionDate = (id: string, nextRevisionAt: string) => {
+    setRevisions(prev => prev.map(item => {
+      if (item.id !== id) return item;
+      const lastStudiedAt = new Date(nextRevisionAt).getTime();
+      const stageOffsets = { first: 1, second: 3, third: 7, monthly: 30 };
+      const scheduledOffset = stageOffsets[item.stage] ?? 1;
+      return {
+        ...item,
+        lastStudiedAt,
+        nextRevisionAt: new Date(lastStudiedAt + scheduledOffset * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      };
+    }));
   };
 
   const handleImportData = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -719,6 +788,16 @@ export default function App() {
         onExportData={handleExportData}
         onImportData={handleImportData}
         avatarSrc={avatarSrc}
+        notifications={notifications}
+        onRequestNotificationPermission={async () => {
+          if (typeof window === 'undefined' || !('Notification' in window)) return;
+          if (Notification.permission === 'granted') return;
+          const permission = await Notification.requestPermission();
+          if (permission === 'granted') {
+            addNotification('Notifications enabled', 'Daily reminders and study alerts are now active.');
+          }
+        }}
+        onMarkNotificationsRead={() => setNotifications(prev => prev.map(item => ({ ...item, isRead: true })))}
       />
 
       {/* Main Content Area */}
@@ -750,7 +829,12 @@ export default function App() {
           <AnalyticsSection sessions={sessions} subjects={subjects} />
         )}
         {activeTab === 'revision' && (
-          <RevisionSection revisions={revisions} subjects={subjects} sessions={sessions} />
+          <RevisionSection
+            revisions={revisions}
+            subjects={subjects}
+            sessions={sessions}
+            onUpdateRevisionDate={handleUpdateRevisionDate}
+          />
         )}
         {activeTab === 'history' && (
           <HistorySection

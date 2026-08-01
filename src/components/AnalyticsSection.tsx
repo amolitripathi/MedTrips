@@ -9,6 +9,7 @@ import {
   getYearlyStats,
   getSubjectStats,
   getPaperStats,
+  getWeeklyProductiveStats,
   formatDuration,
 } from '../utils/studyStats';
 import {
@@ -41,6 +42,7 @@ export const AnalyticsSection: React.FC<AnalyticsSectionProps> = ({ sessions, su
   const yearlyStats = getYearlyStats(sessions);
   const subjectStats = getSubjectStats(sessions, subjects);
   const paperStats = getPaperStats(sessions, subjects);
+  const weeklyProductiveStats = getWeeklyProductiveStats(sessions);
 
   const totalMinutesAll = sessions.reduce((acc, s) => acc + s.durationMinutes, 0);
   const paperChartData = [...paperStats]
@@ -50,6 +52,14 @@ export const AnalyticsSection: React.FC<AnalyticsSectionProps> = ({ sessions, su
       paperName: paper.paperName,
       hours: paper.hours,
       minutes: paper.minutes,
+    }));
+  const subjectChartData = [...subjectStats]
+    .sort((a, b) => b.minutes - a.minutes)
+    .map((sub) => ({
+      subjectName: sub.subjectName,
+      hours: sub.hours,
+      minutes: sub.minutes,
+      color: sub.color,
     }));
 
   return (
@@ -205,6 +215,28 @@ export const AnalyticsSection: React.FC<AnalyticsSectionProps> = ({ sessions, su
         </div>
       </div>
 
+      {/* Weekly Productivity Graph */}
+      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 sm:p-8 shadow-xl">
+        <div className="mb-6">
+          <h3 className="text-lg font-bold">Productive Hours of the Week</h3>
+          <p className="text-xs text-slate-400">Total study time by weekday to show when you are most productive</p>
+        </div>
+        <div className="h-72 w-full">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={weeklyProductiveStats} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
+              <XAxis dataKey="day" stroke="#64748b" fontSize={11} tickLine={false} />
+              <YAxis stroke="#64748b" fontSize={12} tickLine={false} />
+              <Tooltip
+                contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '0.75rem', color: '#fff' }}
+                formatter={(value: number) => [`${value} hrs`, 'Study Time']}
+              />
+              <Bar dataKey="hours" fill="#14b8a6" radius={[6, 6, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
       {/* Monthly & Yearly Stats Graphs Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Monthly Stats */}
@@ -264,27 +296,25 @@ export const AnalyticsSection: React.FC<AnalyticsSectionProps> = ({ sessions, su
             <p className="text-xs text-slate-400">Total time and percentage per subject</p>
           </div>
 
-          <div className="space-y-4">
-            {subjectStats.map((sub) => (
-              <div key={sub.subjectId} className="p-4 bg-slate-950/50 border border-slate-800 rounded-xl space-y-2">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="font-semibold flex items-center gap-2">
-                    <span className="w-3.5 h-3.5 rounded-full" style={{ backgroundColor: sub.color }} />
-                    {sub.subjectName}
-                  </span>
-                  <span className="font-mono text-indigo-300 font-semibold">{formatDuration(sub.minutes)} ({sub.percentage}%)</span>
-                </div>
-                <div className="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
-                  <div
-                    className="h-full rounded-full transition-all"
-                    style={{ width: `${sub.percentage}%`, backgroundColor: sub.color }}
+          <div className="h-80 w-full overflow-x-auto rounded-2xl border border-slate-800 bg-slate-950/40">
+            <div className="min-w-[700px] h-80">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={subjectChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
+                  <XAxis dataKey="subjectName" stroke="#64748b" fontSize={11} tickLine={false} interval={0} angle={-20} textAnchor="end" height={60} />
+                  <YAxis stroke="#64748b" fontSize={12} tickLine={false} />
+                  <Tooltip
+                    contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '0.75rem', color: '#fff' }}
+                    formatter={(value, name, props) => [`${value ?? 0} hrs`, props.payload.subjectName]}
                   />
-                </div>
-              </div>
-            ))}
-            {subjectStats.length === 0 && (
-              <div className="text-center py-8 text-slate-500 text-sm">No subject data available</div>
-            )}
+                  <Bar dataKey="hours" radius={[6, 6, 0, 0]}>
+                    {subjectChartData.map((entry, index) => (
+                      <Cell key={`${entry.subjectName}-${index}`} fill={entry.color} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
           </div>
         </div>
 
