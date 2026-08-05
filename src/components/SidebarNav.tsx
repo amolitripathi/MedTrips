@@ -27,8 +27,8 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({ activeTab, setActiveTab,
   ];
 
   const isDark = theme === 'dark';
-  const activeBgClass = isDark ? 'bg-indigo-500/20 text-indigo-200 border-indigo-500' : 'bg-indigo-50 text-indigo-700 border-indigo-200';
-  const inactiveBgClass = isDark ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100';
+  const activeBgClass = isDark ? 'bg-indigo-500/20 text-indigo-200 border-indigo-500' : 'bg-gray-200 text-gray-900 border-gray-300';
+  const inactiveBgClass = isDark ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50' : 'text-gray-700 hover:text-gray-900 hover:bg-gray-100';
   const categoryTextClass = isDark ? 'text-slate-500' : 'text-gray-500';
 
   const groupedItems = navItems.reduce((acc, item) => {

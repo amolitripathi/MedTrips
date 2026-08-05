@@ -10,6 +10,7 @@ interface SubjectsSectionProps {
   onAddPaper: (subjectId: string, paperName: string, code?: string) => void;
   onUpdatePaper?: (subjectId: string, paperId: string, paperName: string, code?: string) => void;
   onDeletePaper: (subjectId: string, paperId: string) => void;
+  theme: 'light' | 'dark';
 }
 
 export const SubjectsSection: React.FC<SubjectsSectionProps> = ({
@@ -20,6 +21,7 @@ export const SubjectsSection: React.FC<SubjectsSectionProps> = ({
   onAddPaper,
   onUpdatePaper,
   onDeletePaper,
+  theme,
 }) => {
   const [newSubjectName, setNewSubjectName] = useState('');
   const [newSubjectColor, setNewSubjectColor] = useState('#6366f1');

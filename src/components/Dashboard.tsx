@@ -18,6 +18,7 @@ interface DashboardProps {
   studentProfile: StudentProfile;
   onStudentProfileChange: (profile: StudentProfile) => void;
   revisions: RevisionItem[];
+  theme: 'light' | 'dark';
 }
 
 export const Dashboard: React.FC<DashboardProps> = ({
@@ -31,6 +32,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
   studentProfile,
   onStudentProfileChange,
   revisions,
+  theme,
 }) => {
   const { currentStreak, bestStreak } = calculateStreaks(sessions);
   const dailyAvgMinutes = getDailyAverage(sessions);

@@ -9,6 +9,7 @@ interface GoalsSectionProps {
   subjects: Subject[];
   onAddGoal: (goal: Omit<StudyGoal, 'id'>) => void;
   onDeleteGoal: (goalId: string) => void;
+  theme: 'light' | 'dark';
 }
 
 export const GoalsSection: React.FC<GoalsSectionProps> = ({
@@ -17,6 +18,7 @@ export const GoalsSection: React.FC<GoalsSectionProps> = ({
   subjects,
   onAddGoal,
   onDeleteGoal,
+  theme,
 }) => {
   const [type, setType] = useState<'daily' | 'weekly' | 'monthly'>('daily');
   const [targetHours, setTargetHours] = useState(2);

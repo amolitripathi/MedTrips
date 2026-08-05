@@ -30,9 +30,10 @@ import { BarChart3, TrendingUp, Calendar, BookOpen, FileText, Flame, Award } fro
 interface AnalyticsSectionProps {
   sessions: StudySession[];
   subjects: Subject[];
+  theme: 'light' | 'dark';
 }
 
-export const AnalyticsSection: React.FC<AnalyticsSectionProps> = ({ sessions, subjects }) => {
+export const AnalyticsSection: React.FC<AnalyticsSectionProps> = ({ sessions, subjects, theme }) => {
   const [dailyViewDays, setDailyViewDays] = useState<number | 'line'>(30);
   const [monthlyWindowOffset, setMonthlyWindowOffset] = useState(0);
 

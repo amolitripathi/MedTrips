@@ -863,6 +863,7 @@ export default function App() {
             studentProfile={studentProfile}
             onStudentProfileChange={setStudentProfile}
             revisions={revisions}
+            theme={theme}
           />
         )}
         {activeTab === 'timer' && (
@@ -875,13 +876,14 @@ export default function App() {
           />
         )}
         {activeTab === 'analytics' && (
-          <AnalyticsSection sessions={sessions} subjects={subjects} />
+          <AnalyticsSection sessions={sessions} subjects={subjects} theme={theme} />
         )}
         {activeTab === 'curriculum' && (
           <CurriculumSection
             subjects={subjects}
             curriculumProgress={curriculumProgress}
             onUpdateCurriculumProgress={setCurriculumProgress}
+            theme={theme}
           />
         )}
         {activeTab === 'revision' && (
@@ -909,6 +911,7 @@ export default function App() {
             onAddPaper={handleAddPaper}
             onUpdatePaper={handleUpdatePaper}
             onDeletePaper={handleDeletePaper}
+            theme={theme}
           />
         )}
         {activeTab === 'goals' && (
@@ -918,6 +921,7 @@ export default function App() {
             subjects={subjects}
             onAddGoal={handleAddGoal}
             onDeleteGoal={handleDeleteGoal}
+            theme={theme}
           />
         )}
         {activeTab === 'gamification' && (

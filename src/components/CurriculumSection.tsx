@@ -1,11 +1,12 @@
-import React, { useMemo, useState } from 'react';
-import { BookOpen, CheckCircle2, Circle, GraduationCap, CalendarDays, ClipboardList, ChevronDown, Search, Plus } from 'lucide-react';
+import React, { useMemo, useState, useRef, useEffect } from 'react';
+import { BookOpen, CheckCircle2, Circle, GraduationCap, CalendarDays, ClipboardList, ChevronDown, Search, Plus, Trash2 } from 'lucide-react';
 import { CurriculumProgressEntry, CurriculumRevisionStatus, Subject } from '../types';
 
 interface CurriculumSectionProps {
   subjects: Subject[];
   curriculumProgress: CurriculumProgressEntry[];
   onUpdateCurriculumProgress: (entries: CurriculumProgressEntry[]) => void;
+  theme: 'light' | 'dark';
 }
 
 const statusOptions: CurriculumRevisionStatus[] = ['pending', 'on-time', 'late', 'completed'];
@@ -16,11 +17,14 @@ const statusStyles: Record<CurriculumRevisionStatus, string> = {
   completed: 'bg-indigo-500/15 text-indigo-300 border-indigo-500/30',
 };
 
-export const CurriculumSection: React.FC<CurriculumSectionProps> = ({ subjects, curriculumProgress, onUpdateCurriculumProgress }) => {
+export const CurriculumSection: React.FC<CurriculumSectionProps> = ({ subjects, curriculumProgress, onUpdateCurriculumProgress, theme }) => {
+  const isDark = theme === 'dark';
   const [filter, setFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [openSubjects, setOpenSubjects] = useState<Record<string, boolean>>({});
   const [draftTopicBySubject, setDraftTopicBySubject] = useState<Record<string, string>>({});
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; entryId: string } | null>(null);
+  const contextMenuRef = useRef<HTMLDivElement>(null);
 
   const groupedEntries = useMemo(() => {
     const filtered = curriculumProgress.filter((entry) => {
@@ -72,25 +76,40 @@ export const CurriculumSection: React.FC<CurriculumSectionProps> = ({ subjects, 
     setDraftTopicBySubject((prev) => ({ ...prev, [subjectName]: '' }));
   };
 
+  const deleteTopic = (entryId: string) => {
+    onUpdateCurriculumProgress(curriculumProgress.filter((entry) => entry.id !== entryId));
+    setContextMenu(null);
+  };
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (contextMenuRef.current && !contextMenuRef.current.contains(event.target as Node)) {
+        setContextMenu(null);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   return (
-    <div className="space-y-6 text-white">
-      <div className="rounded-3xl border border-slate-800 bg-slate-900 p-6 shadow-xl">
+    <div className={`space-y-6 ${isDark ? 'text-white' : 'text-gray-900'}`}>
+      <div className={`rounded-3xl border shadow-xl p-6 ${isDark ? 'border-slate-800 bg-slate-900' : 'border-gray-200 bg-white'}`}>
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <div className="flex items-center gap-2 text-indigo-300">
+            <div className={`flex items-center gap-2 ${isDark ? 'text-indigo-300' : 'text-gray-700'}`}>
               <GraduationCap className="w-5 h-5" />
               <h2 className="text-xl font-bold">Curriculum Tracker</h2>
             </div>
-            <p className="mt-2 text-sm text-slate-400">Track chapters, topics, MCQ attempts, first read dates, and revision timing in a structured subject-wise planner.</p>
+            <p className={`mt-2 text-sm ${isDark ? 'text-slate-400' : 'text-gray-600'}`}>Track chapters, topics, MCQ attempts, first read dates, and revision timing in a structured subject-wise planner.</p>
           </div>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-            <div className="flex items-center gap-2 rounded-2xl border border-slate-700 bg-slate-950/70 px-3 py-2 text-sm text-slate-300">
-              <Search className="w-4 h-4 text-slate-500" />
+            <div className={`flex items-center gap-2 rounded-2xl border px-3 py-2 text-sm ${isDark ? 'border-slate-700 bg-slate-950/70 text-slate-300' : 'border-gray-300 bg-gray-50 text-gray-700'}`}>
+              <Search className={`w-4 h-4 ${isDark ? 'text-slate-500' : 'text-gray-400'}`} />
               <input
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Spotlight search"
-                className="w-44 bg-transparent outline-none placeholder:text-slate-500"
+                className={`w-44 outline-none placeholder:opacity-50 ${isDark ? 'bg-transparent text-white placeholder:text-slate-500' : 'bg-transparent text-gray-900 placeholder:text-gray-400'}`}
               />
             </div>
             <div className="flex flex-wrap gap-2">
@@ -98,7 +117,15 @@ export const CurriculumSection: React.FC<CurriculumSectionProps> = ({ subjects, 
                 <button
                   key={option}
                   onClick={() => setFilter(option)}
-                  className={`rounded-full border px-3 py-1.5 text-xs font-semibold capitalize transition ${filter === option ? 'border-indigo-500 bg-indigo-500/20 text-indigo-200' : 'border-slate-700 bg-slate-800 text-slate-300'}`}
+                  className={`rounded-full border px-3 py-1.5 text-xs font-semibold capitalize transition ${
+                    filter === option
+                      ? isDark
+                        ? 'border-indigo-500 bg-indigo-500/20 text-indigo-200'
+                        : 'border-gray-400 bg-gray-300 text-gray-900'
+                      : isDark
+                      ? 'border-slate-700 bg-slate-800 text-slate-300'
+                      : 'border-gray-300 bg-gray-100 text-gray-700'
+                  }`}
                 >
                   {option.replace('-', ' ')}
                 </button>
@@ -108,8 +135,8 @@ export const CurriculumSection: React.FC<CurriculumSectionProps> = ({ subjects, 
         </div>
       </div>
 
-      <div className="rounded-3xl border border-slate-800 bg-slate-900 shadow-xl">
-        <div className="border-b border-slate-800 px-4 py-3 text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
+      <div className={`rounded-3xl border shadow-xl ${isDark ? 'border-slate-800 bg-slate-900' : 'border-gray-200 bg-white'}`}>
+        <div className={`border-b px-4 py-3 text-xs font-semibold uppercase tracking-[0.2em] ${isDark ? 'border-slate-800 text-slate-400' : 'border-gray-200 text-gray-600'}`}>
           Subject-wise topic planner
         </div>
 
@@ -162,7 +189,14 @@ export const CurriculumSection: React.FC<CurriculumSectionProps> = ({ subjects, 
                         </div>
 
                         {entries.map((entry) => (
-                          <div key={entry.id} className="grid grid-cols-[2.2fr_90px_90px_140px_140px_130px_1.4fr] gap-2 border-b border-slate-800/70 px-3 py-3 last:border-b-0">
+                          <div
+                            key={entry.id}
+                            className="grid grid-cols-[2.2fr_90px_90px_140px_140px_130px_1.4fr] gap-2 border-b border-slate-800/70 px-3 py-3 last:border-b-0 relative"
+                            onContextMenu={(e) => {
+                              e.preventDefault();
+                              setContextMenu({ x: e.clientX, y: e.clientY, entryId: entry.id });
+                            }}
+                          >
                             <div className="min-w-0">
                               <div className="font-semibold text-white">{entry.topic}</div>
                               <div className="mt-1 text-xs text-slate-500">{entry.subjectName}</div>
@@ -222,6 +256,23 @@ export const CurriculumSection: React.FC<CurriculumSectionProps> = ({ subjects, 
           })}
         </div>
       </div>
+
+      {/* Context Menu */}
+      {contextMenu && (
+        <div
+          ref={contextMenuRef}
+          className="fixed z-50 bg-slate-800 border border-slate-700 rounded-xl shadow-xl"
+          style={{ left: `${contextMenu.x}px`, top: `${contextMenu.y}px` }}
+        >
+          <button
+            onClick={() => deleteTopic(contextMenu.entryId)}
+            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-rose-300 hover:bg-rose-500/15 w-full text-left rounded-xl"
+          >
+            <Trash2 className="w-4 h-4" />
+            Delete topic
+          </button>
+        </div>
+      )}
 
       <div className="grid gap-4 md:grid-cols-3">
         <div className="rounded-2xl border border-slate-800 bg-slate-900 p-4">
