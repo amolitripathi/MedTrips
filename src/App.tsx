@@ -4,6 +4,7 @@ import { DEFAULT_SUBJECTS, DEFAULT_SESSIONS, DEFAULT_TIMER_SETTINGS, DEFAULT_GOA
 import { buildCurriculumEntries } from './data/curriculumData';
 import doctorAvatar from './assets/images/animated_doctor_avatar_1783755080501.jpg';
 import { Navbar } from './components/Navbar';
+import { SidebarNav } from './components/SidebarNav';
 import { Dashboard } from './components/Dashboard';
 import { TimerSection } from './components/TimerSection';
 import { AnalyticsSection } from './components/AnalyticsSection';
@@ -26,6 +27,10 @@ import { CurriculumProgressEntry } from './types';
 import { createCloudSyncGuard } from './utils/cloudSync';
 
 export default function App() {
+  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
+    const saved = localStorage.getItem('study_tracker_theme');
+    return (saved as 'light' | 'dark') || 'dark';
+  });
   const [activeTab, setActiveTab] = useState<ActiveTab>('dashboard');
   const [isLogModalOpen, setIsLogModalOpen] = useState(false);
   const [currentUser, setCurrentUser] = useState<any>(null);
@@ -91,6 +96,16 @@ export default function App() {
   const lastRemoteSnapshotAtRef = React.useRef<number | null>(null);
   const initialHydrationCompleteRef = React.useRef(false);
   const lastSyncedStateRef = React.useRef<string | null>(null);
+
+  const toggleTheme = () => {
+    const newTheme = theme === 'dark' ? 'light' : 'dark';
+    setTheme(newTheme);
+    localStorage.setItem('study_tracker_theme', newTheme);
+  };
+
+  const handleLogout = () => {
+    auth.signOut();
+  };
 
   // Listen to Firebase Auth state
   useEffect(() => {
@@ -796,8 +811,13 @@ export default function App() {
     if (e.target) e.target.value = '';
   };
 
+  const bgClass = theme === 'dark' ? 'bg-slate-950 text-slate-100' : 'bg-gray-50 text-gray-900';
+  const navBgClass = theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-gray-200';
+  const sidebarBgClass = theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-gray-200';
+  const cardBgClass = theme === 'dark' ? 'bg-slate-800' : 'bg-white';
+
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-indigo-500 selection:text-white">
+    <div className={`min-h-screen ${bgClass} flex flex-col font-sans selection:bg-indigo-500 selection:text-white`}>
       {/* Top Navbar */}
       <Navbar
         activeTab={activeTab}
@@ -817,10 +837,20 @@ export default function App() {
           }
         }}
         onMarkNotificationsRead={() => setNotifications(prev => prev.map(item => ({ ...item, isRead: true })))}
+        theme={theme}
+        onToggleTheme={toggleTheme}
+        onLogout={handleLogout}
       />
 
-      {/* Main Content Area */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      {/* Layout with Sidebar */}
+      <div className="flex flex-1">
+        {/* Sidebar Navigation - Desktop */}
+        <aside className={`hidden lg:flex w-72 ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-gray-200'} border-r flex-col py-6 px-4 overflow-y-auto`}>
+          <SidebarNav activeTab={activeTab} setActiveTab={setActiveTab} theme={theme} />
+        </aside>
+
+        {/* Main Content Area */}
+        <main className="flex-1 w-full px-4 sm:px-6 lg:px-8 py-8 overflow-y-auto">
         {activeTab === 'dashboard' && (
           <Dashboard
             sessions={sessions}
@@ -946,6 +976,7 @@ export default function App() {
           />
         )}
       </main>
+      </div>
 
       {/* Log Session Modal */}
       <LogSessionModal
