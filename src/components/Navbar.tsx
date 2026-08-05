@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { ActiveTab, NotificationItem } from '../types';
-import { Clock, BarChart3, BookOpen, Calendar, LayoutDashboard, Plus, RotateCcw, Download, Upload, Target, Trophy, FileText, CheckSquare, Users, ChevronDown, Link2, Bell, X } from 'lucide-react';
+import { Clock, BarChart3, BookOpen, Calendar, LayoutDashboard, Plus, RotateCcw, Download, Upload, Target, Trophy, FileText, CheckSquare, Users, ChevronDown, Link2, Bell, X, GraduationCap } from 'lucide-react';
 
 interface NavbarProps {
   activeTab: ActiveTab;
@@ -42,6 +42,7 @@ export const Navbar: React.FC<NavbarProps> = ({
     { id: 'calendar', label: 'Calendar View', category: 'Core & Study', icon: <Calendar className="w-4 h-4 text-blue-400" /> },
     { id: 'todos', label: 'To-Do List', category: 'Core & Study', icon: <CheckSquare className="w-4 h-4 text-purple-400" /> },
     { id: 'analytics', label: 'Stats & Graphs', category: 'Analytics & Resources', icon: <BarChart3 className="w-4 h-4 text-emerald-400" /> },
+    { id: 'curriculum', label: 'Curriculum Tracker', category: 'Analytics & Resources', icon: <GraduationCap className="w-4 h-4 text-cyan-400" /> },
     { id: 'revision', label: 'Revision Queue', category: 'Analytics & Resources', icon: <RotateCcw className="w-4 h-4 text-violet-400" /> },
     { id: 'subjects', label: 'Subjects & Papers', category: 'Analytics & Resources', icon: <BookOpen className="w-4 h-4 text-rose-400" /> },
     { id: 'goals', label: 'Study Goals', category: 'Analytics & Resources', icon: <Target className="w-4 h-4 text-cyan-400" /> },

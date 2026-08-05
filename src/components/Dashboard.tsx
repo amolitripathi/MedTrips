@@ -214,6 +214,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
             {[
               ['timer', 'Study Timer'],
               ['analytics', 'Stats & Graphs'],
+              ['curriculum', 'Curriculum'],
               ['revision', 'Revision Queue'],
               ['history', 'Logs History'],
               ['calendar', 'Calendar'],
