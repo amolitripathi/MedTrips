@@ -5,10 +5,9 @@ import { LayoutDashboard, Clock, Calendar, CheckSquare, BarChart3, GraduationCap
 interface SidebarNavProps {
   activeTab: ActiveTab;
   setActiveTab: (tab: ActiveTab) => void;
-  theme: 'light' | 'dark';
 }
 
-export const SidebarNav: React.FC<SidebarNavProps> = ({ activeTab, setActiveTab, theme }) => {
+export const SidebarNav: React.FC<SidebarNavProps> = ({ activeTab, setActiveTab }) => {
   const navItems: { id: ActiveTab; label: string; category: string; icon: React.ReactNode }[] = [
     { id: 'dashboard', label: 'Dashboard', category: 'CORE', icon: <LayoutDashboard className="w-5 h-5" /> },
     { id: 'timer', label: 'Study Timer', category: 'CORE', icon: <Clock className="w-5 h-5" /> },
@@ -26,10 +25,9 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({ activeTab, setActiveTab,
     { id: 'friends', label: 'Friends', category: 'SOCIAL', icon: <Users className="w-5 h-5" /> },
   ];
 
-  const isDark = theme === 'dark';
-  const activeBgClass = isDark ? 'bg-indigo-500/20 text-indigo-200 border-indigo-500' : 'bg-gray-200 text-gray-900 border-gray-300';
-  const inactiveBgClass = isDark ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50' : 'text-gray-700 hover:text-gray-900 hover:bg-gray-100';
-  const categoryTextClass = isDark ? 'text-slate-500' : 'text-gray-500';
+  const activeBgClass = 'bg-indigo-500/20 text-indigo-200 border-indigo-500';
+  const inactiveBgClass = 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50';
+  const categoryTextClass = 'text-slate-500';
 
   const groupedItems = navItems.reduce((acc, item) => {
     const category = item.category;

@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { ActiveTab, NotificationItem } from '../types';
-import { Clock, BarChart3, BookOpen, Calendar, LayoutDashboard, Plus, RotateCcw, Download, Upload, Target, Trophy, FileText, CheckSquare, Users, ChevronDown, Link2, Bell, X, GraduationCap, Moon, Sun, LogOut } from 'lucide-react';
+import { Clock, BarChart3, BookOpen, Calendar, LayoutDashboard, Plus, RotateCcw, Download, Upload, Target, Trophy, FileText, CheckSquare, Users, ChevronDown, Link2, Bell, X, GraduationCap, LogOut } from 'lucide-react';
 
 interface NavbarProps {
   activeTab: ActiveTab;
@@ -13,8 +13,6 @@ interface NavbarProps {
   notifications: NotificationItem[];
   onRequestNotificationPermission: () => void;
   onMarkNotificationsRead: () => void;
-  theme: 'light' | 'dark';
-  onToggleTheme: () => void;
   onLogout: () => void;
 }
 
@@ -29,8 +27,6 @@ export const Navbar: React.FC<NavbarProps> = ({
   notifications,
   onRequestNotificationPermission,
   onMarkNotificationsRead,
-  theme,
-  onToggleTheme,
   onLogout,
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -80,7 +76,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   const unreadCount = notifications.filter(item => !item.isRead).length;
 
   return (
-    <header className={`${theme === 'dark' ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-gray-200 text-gray-900'} border-b sticky top-0 z-40`}>
+    <header className="bg-slate-900 border-slate-800 text-white border-b sticky top-0 z-40">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Logo & Minimalist View Dropdown */}
@@ -329,15 +325,6 @@ export const Navbar: React.FC<NavbarProps> = ({
                 className="p-2 text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition"
               >
                 <RotateCcw className="w-4 h-4" />
-              </button>
-
-              {/* Theme Toggle */}
-              <button
-                onClick={onToggleTheme}
-                title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`}
-                className={`p-2 rounded-lg transition ${theme === 'dark' ? 'text-slate-400 hover:text-yellow-400 hover:bg-slate-800' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-200'}`}
-              >
-                {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
               </button>
 
               {/* Logout */}

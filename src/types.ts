@@ -136,6 +136,30 @@ export interface ExamDeadline {
 
 export type CurriculumRevisionStatus = 'pending' | 'on-time' | 'late' | 'completed';
 
+export interface CurriculumTopic {
+  id: string;
+  name: string;
+  studied: boolean;
+  attemptedMcq: boolean;
+  firstReadingDate: string;
+  nextRevisionDate: string;
+  revisionStatus: CurriculumRevisionStatus;
+  notes: string;
+}
+
+export interface CurriculumHeading {
+  id: string;
+  name: string; // e.g., "Chapter 1: Introduction"
+  topics: CurriculumTopic[];
+}
+
+export interface CurriculumSubject {
+  id: string;
+  name: string;
+  color: string;
+  headings: CurriculumHeading[];
+}
+
 export interface CurriculumProgressEntry {
   id: string;
   subjectId: string;

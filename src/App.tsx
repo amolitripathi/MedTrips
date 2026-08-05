@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Subject, StudySession, ActiveTab, TimerSettings, StudyGoal, Badge, Challenge, StudyNote, TodoItem, StudyLink, ExamDeadline, StudentProfile, RevisionItem, NotificationItem } from './types';
 import { DEFAULT_SUBJECTS, DEFAULT_SESSIONS, DEFAULT_TIMER_SETTINGS, DEFAULT_GOALS, DEFAULT_BADGES, DEFAULT_CHALLENGES, DEFAULT_NOTES, DEFAULT_TODOS, DEFAULT_LINKS, DEFAULT_EXAMS, DEFAULT_REVISION_ITEMS } from './data/initialData';
-import { buildCurriculumEntries } from './data/curriculumData';
 import doctorAvatar from './assets/images/animated_doctor_avatar_1783755080501.jpg';
 import { Navbar } from './components/Navbar';
 import { SidebarNav } from './components/SidebarNav';
@@ -23,14 +22,11 @@ import { AuthModal } from './components/AuthModal';
 import { FriendsSection } from './components/FriendsSection';
 import { db, auth, doc, setDoc, onSnapshot, onAuthStateChanged, getDoc, removeUndefinedDeep } from './lib/firebase';
 import { calculateStreaks } from './utils/studyStats';
-import { CurriculumProgressEntry } from './types';
+import { CurriculumSubject } from './types';
 import { createCloudSyncGuard } from './utils/cloudSync';
 
 export default function App() {
-  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
-    const saved = localStorage.getItem('study_tracker_theme');
-    return (saved as 'light' | 'dark') || 'dark';
-  });
+  const theme = 'dark';
   const [activeTab, setActiveTab] = useState<ActiveTab>('dashboard');
   const [isLogModalOpen, setIsLogModalOpen] = useState(false);
   const [currentUser, setCurrentUser] = useState<any>(null);
@@ -96,12 +92,6 @@ export default function App() {
   const lastRemoteSnapshotAtRef = React.useRef<number | null>(null);
   const initialHydrationCompleteRef = React.useRef(false);
   const lastSyncedStateRef = React.useRef<string | null>(null);
-
-  const toggleTheme = () => {
-    const newTheme = theme === 'dark' ? 'light' : 'dark';
-    setTheme(newTheme);
-    localStorage.setItem('study_tracker_theme', newTheme);
-  };
 
   const handleLogout = () => {
     auth.signOut();
@@ -208,12 +198,12 @@ export default function App() {
     return DEFAULT_EXAMS;
   });
 
-  const [curriculumProgress, setCurriculumProgress] = useState<CurriculumProgressEntry[]>(() => {
-    const saved = localStorage.getItem('study_tracker_curriculum');
+  const [curriculumSubjects, setCurriculumSubjects] = useState<CurriculumSubject[]>(() => {
+    const saved = localStorage.getItem('study_tracker_curriculum_v2');
     if (saved) {
-      try { return JSON.parse(saved); } catch { return buildCurriculumEntries(DEFAULT_SUBJECTS); }
+      try { return JSON.parse(saved); } catch { return []; }
     }
-    return buildCurriculumEntries(DEFAULT_SUBJECTS);
+    return [];
   });
 
   const markLocalChange = () => {
@@ -236,7 +226,7 @@ export default function App() {
     revisions,
     notifications,
     studentProfile,
-    curriculumProgress,
+    curriculumSubjects,
   });
 
   const sanitizeForFirestore = <T,>(value: T): T => removeUndefinedDeep(value) as T;
@@ -266,7 +256,7 @@ export default function App() {
       if (Array.isArray(data.revisions)) setRevisions(data.revisions as RevisionItem[]);
       if (Array.isArray(data.notifications)) setNotifications(data.notifications as NotificationItem[]);
       if (data.studentProfile) setStudentProfile(data.studentProfile as StudentProfile);
-      if (Array.isArray(data.curriculumProgress)) setCurriculumProgress(data.curriculumProgress as CurriculumProgressEntry[]);
+      if (Array.isArray(data.curriculumSubjects)) setCurriculumSubjects(data.curriculumSubjects as CurriculumSubject[]);
       if (remoteUpdatedAt) {
         lastRemoteSnapshotAtRef.current = remoteUpdatedAt;
       }
@@ -443,8 +433,8 @@ export default function App() {
   }, [notifications]);
 
   useEffect(() => {
-    localStorage.setItem('study_tracker_curriculum', JSON.stringify(curriculumProgress));
-  }, [curriculumProgress]);
+    localStorage.setItem('study_tracker_curriculum_v2', JSON.stringify(curriculumSubjects));
+  }, [curriculumSubjects]);
 
   // Save to Firestore when state changes (syncing across devices for the account)
   useEffect(() => {
@@ -490,7 +480,7 @@ export default function App() {
           revisions,
           notifications,
           studentProfile,
-          curriculumProgress,
+          curriculumSubjects,
           updatedAt: now,
           updatedBy: currentUser.uid
         }), { merge: true });
@@ -741,7 +731,7 @@ export default function App() {
       setLinks(DEFAULT_LINKS);
       setRevisions(DEFAULT_REVISION_ITEMS);
       setNotifications([]);
-      setCurriculumProgress(buildCurriculumEntries(DEFAULT_SUBJECTS));
+      setCurriculumSubjects([]);
       localStorage.clear();
     }
   };
@@ -837,16 +827,14 @@ export default function App() {
           }
         }}
         onMarkNotificationsRead={() => setNotifications(prev => prev.map(item => ({ ...item, isRead: true })))}
-        theme={theme}
-        onToggleTheme={toggleTheme}
         onLogout={handleLogout}
       />
 
       {/* Layout with Sidebar */}
       <div className="flex flex-1">
         {/* Sidebar Navigation - Desktop */}
-        <aside className={`hidden lg:flex w-72 ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-gray-200'} border-r flex-col py-6 px-4 overflow-y-auto`}>
-          <SidebarNav activeTab={activeTab} setActiveTab={setActiveTab} theme={theme} />
+        <aside className="hidden lg:flex w-72 bg-slate-900 border-slate-800 border-r flex-col py-6 px-4 overflow-y-auto">
+          <SidebarNav activeTab={activeTab} setActiveTab={setActiveTab} />
         </aside>
 
         {/* Main Content Area */}
@@ -880,10 +868,8 @@ export default function App() {
         )}
         {activeTab === 'curriculum' && (
           <CurriculumSection
-            subjects={subjects}
-            curriculumProgress={curriculumProgress}
-            onUpdateCurriculumProgress={setCurriculumProgress}
-            theme={theme}
+            curriculumSubjects={curriculumSubjects}
+            onUpdateCurriculumSubjects={setCurriculumSubjects}
           />
         )}
         {activeTab === 'revision' && (
