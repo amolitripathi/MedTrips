@@ -807,7 +807,7 @@ export default function App() {
   const cardBgClass = theme === 'dark' ? 'bg-slate-800' : 'bg-white';
 
   return (
-    <div className={`min-h-screen ${bgClass} flex flex-col font-sans selection:bg-indigo-500 selection:text-white`}>
+    <div className={`h-screen overflow-hidden ${bgClass} flex flex-col font-sans selection:bg-indigo-500 selection:text-white`}>
       {/* Top Navbar */}
       <Navbar
         activeTab={activeTab}
@@ -831,9 +831,9 @@ export default function App() {
       />
 
       {/* Layout with Sidebar */}
-      <div className="flex flex-1">
+      <div className="flex flex-1 overflow-hidden">
         {/* Sidebar Navigation - Desktop */}
-        <aside className="hidden lg:flex w-72 bg-slate-900 border-slate-800 border-r flex-col py-6 px-4 overflow-y-auto">
+        <aside className="hidden lg:flex w-72 bg-slate-900 border-slate-800 border-r flex-col py-6 px-4 overflow-y-auto flex-shrink-0 sticky top-0 h-[calc(100vh-57px)]">
           <SidebarNav activeTab={activeTab} setActiveTab={setActiveTab} />
         </aside>
 
