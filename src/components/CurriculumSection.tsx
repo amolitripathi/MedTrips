@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { BookOpen, CheckCircle2, Circle, GraduationCap, CalendarDays, ClipboardList, ChevronDown, Search } from 'lucide-react';
+import { BookOpen, CheckCircle2, Circle, GraduationCap, CalendarDays, ClipboardList, ChevronDown, Search, Plus } from 'lucide-react';
 import { CurriculumProgressEntry, CurriculumRevisionStatus, Subject } from '../types';
 
 interface CurriculumSectionProps {
@@ -20,6 +20,7 @@ export const CurriculumSection: React.FC<CurriculumSectionProps> = ({ subjects, 
   const [filter, setFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [openSubjects, setOpenSubjects] = useState<Record<string, boolean>>({});
+  const [draftTopicBySubject, setDraftTopicBySubject] = useState<Record<string, string>>({});
 
   const groupedEntries = useMemo(() => {
     const filtered = curriculumProgress.filter((entry) => {
@@ -44,6 +45,31 @@ export const CurriculumSection: React.FC<CurriculumSectionProps> = ({ subjects, 
 
   const updateEntry = (id: string, field: keyof Omit<CurriculumProgressEntry, 'id' | 'subjectId' | 'subjectName' | 'topic'>, value: string | boolean) => {
     onUpdateCurriculumProgress(curriculumProgress.map((entry) => entry.id === id ? { ...entry, [field]: value } : entry));
+  };
+
+  const addTopic = (subjectName: string) => {
+    const topicName = draftTopicBySubject[subjectName]?.trim();
+    if (!topicName) return;
+
+    const subject = subjects.find((item) => item.name === subjectName);
+    if (!subject) return;
+
+    const slug = topicName.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+    const newEntry: CurriculumProgressEntry = {
+      id: `${subject.id}-${slug}-${Date.now()}`,
+      subjectId: subject.id,
+      subjectName: subject.name,
+      topic: topicName,
+      studied: false,
+      attemptedMcq: false,
+      firstReadingDate: '',
+      nextRevisionDate: '',
+      revisionStatus: 'pending',
+      notes: '',
+    };
+
+    onUpdateCurriculumProgress([...curriculumProgress, newEntry]);
+    setDraftTopicBySubject((prev) => ({ ...prev, [subjectName]: '' }));
   };
 
   return (
@@ -107,6 +133,22 @@ export const CurriculumSection: React.FC<CurriculumSectionProps> = ({ subjects, 
 
                 {isOpen && (
                   <div className="border-t border-slate-800 p-3">
+                    <div className="mb-3 flex flex-col gap-2 rounded-2xl border border-slate-800 bg-slate-900/70 p-3 sm:flex-row sm:items-center">
+                      <input
+                        value={draftTopicBySubject[subjectName] ?? ''}
+                        onChange={(e) => setDraftTopicBySubject((prev) => ({ ...prev, [subjectName]: e.target.value }))}
+                        placeholder={`Add a topic to ${subjectName}`}
+                        className="flex-1 rounded-xl border border-slate-700 bg-slate-950/70 px-3 py-2 text-sm text-white outline-none"
+                      />
+                      <button
+                        onClick={() => addTopic(subjectName)}
+                        className="flex items-center justify-center gap-2 rounded-xl border border-indigo-500/40 bg-indigo-500/15 px-3 py-2 text-sm font-semibold text-indigo-200"
+                      >
+                        <Plus className="h-4 w-4" />
+                        Add topic
+                      </button>
+                    </div>
+
                     <div className="overflow-x-auto">
                       <div className="min-w-[980px] rounded-2xl border border-slate-800 bg-slate-950/50">
                         <div className="grid grid-cols-[2.2fr_90px_90px_140px_140px_130px_1.4fr] gap-2 border-b border-slate-800 bg-slate-900/80 px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
