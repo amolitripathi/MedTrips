@@ -173,5 +173,5 @@ export interface CurriculumProgressEntry {
   notes: string;
 }
 
-export type ActiveTab = 'dashboard' | 'timer' | 'analytics' | 'history' | 'subjects' | 'goals' | 'gamification' | 'notes' | 'calendar' | 'todos' | 'friends' | 'links' | 'revision' | 'curriculum';
+export type ActiveTab = 'dashboard' | 'timer' | 'analytics' | 'history' | 'subjects' | 'goals' | 'gamification' | 'notes' | 'calendar' | 'todos' | 'friends' | 'links' | 'revision' | 'curriculum' | 'admin';
 

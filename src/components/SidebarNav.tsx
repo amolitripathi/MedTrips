@@ -1,14 +1,15 @@
 import React from 'react';
 import { ActiveTab } from '../types';
-import { LayoutDashboard, Clock, Calendar, CheckSquare, BarChart3, GraduationCap, RotateCcw, BookOpen, Target, FileText, Link2, Trophy, Users, Library, Video, FlaskConical, Brain } from 'lucide-react';
+import { LayoutDashboard, Clock, Calendar, CheckSquare, BarChart3, GraduationCap, RotateCcw, BookOpen, Target, FileText, Link2, Trophy, Users, Library, Video, FlaskConical, Brain, ShieldCheck } from 'lucide-react';
 
 interface SidebarNavProps {
   activeTab: ActiveTab;
   setActiveTab: (tab: ActiveTab) => void;
   mode: 'gamer' | 'learner';
+  isAdmin?: boolean;
 }
 
-export const SidebarNav: React.FC<SidebarNavProps> = ({ activeTab, setActiveTab, mode }) => {
+export const SidebarNav: React.FC<SidebarNavProps> = ({ activeTab, setActiveTab, mode, isAdmin }) => {
   const gamerItems: { id: ActiveTab; label: string; category: string; icon: React.ReactNode }[] = [
     { id: 'dashboard', label: 'Dashboard', category: 'CORE', icon: <LayoutDashboard className="w-5 h-5" /> },
     { id: 'timer', label: 'Study Timer', category: 'CORE', icon: <Clock className="w-5 h-5" /> },
@@ -28,7 +29,7 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({ activeTab, setActiveTab,
 
   const learnerItems: { id: ActiveTab; label: string; category: string; icon: React.ReactNode }[] = [
     { id: 'dashboard', label: 'Dashboard', category: 'LEARN', icon: <LayoutDashboard className="w-5 h-5" /> },
-    { id: 'subjects', label: 'Q-Banks', category: 'LEARN', icon: <FlaskConical className="w-5 h-5" /> },
+    { id: 'subjects', label: 'Question Bank', category: 'LEARN', icon: <FlaskConical className="w-5 h-5" /> },
     { id: 'todos', label: 'Flashcards', category: 'LEARN', icon: <Brain className="w-5 h-5" /> },
     { id: 'links', label: 'Library', category: 'LEARN', icon: <Library className="w-5 h-5" /> },
     { id: 'curriculum', label: 'Curriculum', category: 'LEARN', icon: <GraduationCap className="w-5 h-5" /> },
@@ -36,16 +37,17 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({ activeTab, setActiveTab,
     { id: 'notes', label: 'My Notes', category: 'REVIEW', icon: <FileText className="w-5 h-5" /> },
     { id: 'analytics', label: 'Reports', category: 'REVIEW', icon: <BarChart3 className="w-5 h-5" /> },
     { id: 'revision', label: 'Revisions', category: 'REVIEW', icon: <BookOpen className="w-5 h-5" /> },
-    { id: 'gamification', label: 'Achievements', category: 'COMPETE', icon: <Trophy className="w-5 h-5" /> },
+    { id: 'gamification', label: 'Challenges', category: 'COMPETE', icon: <Trophy className="w-5 h-5" /> },
     { id: 'friends', label: 'Study Groups', category: 'COMPETE', icon: <Users className="w-5 h-5" /> },
     { id: 'timer', label: 'Pomodoro', category: 'TOOLS', icon: <Clock className="w-5 h-5" /> },
     { id: 'goals', label: 'Goals', category: 'TOOLS', icon: <Target className="w-5 h-5" /> },
     { id: 'calendar', label: 'Planner', category: 'TOOLS', icon: <Calendar className="w-5 h-5" /> },
+    ...(isAdmin ? [{ id: 'admin' as ActiveTab, label: 'Admin Panel', category: 'ADMIN', icon: <ShieldCheck className="w-5 h-5" /> }] : []),
   ];
 
   const isLearner = mode === 'learner';
   const navItems = isLearner ? learnerItems : gamerItems;
-  const categoryOrder = isLearner ? ['LEARN', 'REVIEW', 'COMPETE', 'TOOLS'] : ['CORE', 'LEARNING', 'TRACKING', 'SOCIAL'];
+  const categoryOrder = isLearner ? ['LEARN', 'REVIEW', 'COMPETE', 'TOOLS', 'ADMIN'] : ['CORE', 'LEARNING', 'TRACKING', 'SOCIAL'];
 
   const activeBgClass = isLearner
     ? 'bg-amber-500/15 text-amber-200 border-amber-400'

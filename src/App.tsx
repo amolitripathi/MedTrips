@@ -21,6 +21,8 @@ import { LogSessionModal } from './components/LogSessionModal';
 import { AuthModal } from './components/AuthModal';
 import { FriendsSection } from './components/FriendsSection';
 import { AIAssistant } from './components/AIAssistant';
+import { LearnerDashboard } from './components/learner/LearnerDashboard';
+import { LearnerAdminPanel } from './components/learner/LearnerAdminPanel';
 import { db, auth, doc, setDoc, onSnapshot, onAuthStateChanged, getDoc, removeUndefinedDeep } from './lib/firebase';
 import { calculateStreaks } from './utils/studyStats';
 import { CurriculumSubject } from './types';
@@ -812,6 +814,8 @@ export default function App() {
 
   const bgClass = mode === 'learner' ? 'bg-[#0d1117] text-[#e6edf3]' : 'bg-slate-950 text-slate-100';
   const sidebarBgClass = mode === 'learner' ? 'bg-[#161b22] border-[#30363d]' : 'bg-slate-900 border-slate-800';
+  const ADMIN_EMAIL = 'dramolitripathi@gmail.com';
+  const isAdmin = currentUser?.email === ADMIN_EMAIL;
 
   return (
     <div className={`h-screen overflow-hidden ${bgClass} flex flex-col font-sans selection:bg-indigo-500 selection:text-white`}>
@@ -843,26 +847,79 @@ export default function App() {
       <div className="flex flex-1 overflow-hidden">
         {/* Sidebar Navigation - Desktop */}
         <aside className={`hidden lg:flex w-72 ${sidebarBgClass} border-r flex-col py-6 px-4 overflow-y-auto flex-shrink-0 sticky top-0 h-[calc(100vh-57px)]`}>
-          <SidebarNav activeTab={activeTab} setActiveTab={setActiveTab} mode={mode} />
+          <SidebarNav activeTab={activeTab} setActiveTab={setActiveTab} mode={mode} isAdmin={isAdmin} />
         </aside>
 
         {/* Main Content Area */}
         <main className="flex-1 w-full px-4 sm:px-6 lg:px-8 py-8 overflow-y-auto">
-        {activeTab === 'dashboard' && (
-          <Dashboard
-            sessions={sessions}
-            subjects={subjects}
-            goals={goals}
-            setActiveTab={setActiveTab}
-            onOpenLogModal={() => setIsLogModalOpen(true)}
-            avatarType={avatarType}
-            onAvatarTypeChange={setAvatarType}
-            studentProfile={studentProfile}
-            onStudentProfileChange={setStudentProfile}
-            revisions={revisions}
-            theme={theme}
-          />
-        )}
+        {/* Learner mode — completely different UI */}
+        {mode === 'learner' ? (
+          <>
+            {activeTab === 'dashboard' && (
+              <LearnerDashboard
+                sessions={sessions}
+                subjects={subjects}
+                studentProfile={studentProfile}
+                curriculumSubjects={curriculumSubjects}
+                setActiveTab={setActiveTab}
+              />
+            )}
+            {activeTab === 'admin' && (
+              <LearnerAdminPanel
+                currentUserEmail={currentUser?.email ?? null}
+                subjects={subjects}
+                curriculumSubjects={curriculumSubjects}
+                onUpdateCurriculumSubjects={setCurriculumSubjects}
+                notes={notes}
+                onAddNote={handleAddNote}
+                onDeleteNote={handleDeleteNote}
+                links={links}
+                onAddLink={handleAddLink}
+                onDeleteLink={handleDeleteLink}
+              />
+            )}
+            {activeTab === 'subjects' && (
+              <SubjectsSection
+                subjects={subjects}
+                onAddSubject={handleAddSubject}
+                onUpdateSubject={handleUpdateSubject}
+                onDeleteSubject={handleDeleteSubject}
+                onAddPaper={handleAddPaper}
+                onUpdatePaper={handleUpdatePaper}
+                onDeletePaper={handleDeletePaper}
+                theme="dark"
+              />
+            )}
+            {activeTab === 'analytics' && <AnalyticsSection sessions={sessions} subjects={subjects} theme="dark" />}
+            {activeTab === 'curriculum' && <CurriculumSection curriculumSubjects={curriculumSubjects} onUpdateCurriculumSubjects={setCurriculumSubjects} />}
+            {activeTab === 'revision' && <RevisionSection revisions={revisions} subjects={subjects} sessions={sessions} onUpdateRevisionDate={handleUpdateRevisionDate} />}
+            {activeTab === 'history' && <HistorySection sessions={sessions} subjects={subjects} onDeleteSession={handleDeleteSession} onUpdateSession={handleUpdateSession} />}
+            {activeTab === 'notes' && <NotesSection notes={notes} subjects={subjects} sessions={sessions} onAddNote={handleAddNote} onUpdateNote={handleUpdateNote} onDeleteNote={handleDeleteNote} />}
+            {activeTab === 'goals' && <GoalsSection goals={goals} sessions={sessions} subjects={subjects} onAddGoal={handleAddGoal} onDeleteGoal={handleDeleteGoal} theme="dark" />}
+            {activeTab === 'gamification' && <GamificationSection badges={badges} challenges={challenges} sessions={sessions} subjects={subjects} streak={streak} onAddChallenge={handleAddChallenge} onToggleChallenge={handleToggleChallenge} />}
+            {activeTab === 'friends' && <FriendsSection currentUser={currentUser} sessions={sessions} onOpenAuth={() => setIsAuthModalOpen(true)} />}
+            {activeTab === 'timer' && <TimerSection subjects={subjects} timerSettings={timerSettings} onUpdateTimerSettings={setTimerSettings} onAddSession={handleAddSession} onNavigateToStats={() => setActiveTab('analytics')} />}
+            {activeTab === 'calendar' && <CalendarSection sessions={sessions} subjects={subjects} exams={exams} onOpenLogModal={() => setIsLogModalOpen(true)} onAddExam={handleAddExam} onDeleteExam={handleDeleteExam} />}
+            {activeTab === 'todos' && <TodosSection todos={todos} subjects={subjects} onAddTodo={handleAddTodo} onToggleTodo={handleToggleTodo} onDeleteTodo={handleDeleteTodo} />}
+            {activeTab === 'links' && <LinksSection links={links} subjects={subjects} onAddLink={handleAddLink} onDeleteLink={handleDeleteLink} />}
+          </>
+        ) : (
+          <>
+          {activeTab === 'dashboard' && (
+            <Dashboard
+              sessions={sessions}
+              subjects={subjects}
+              goals={goals}
+              setActiveTab={setActiveTab}
+              onOpenLogModal={() => setIsLogModalOpen(true)}
+              avatarType={avatarType}
+              onAvatarTypeChange={setAvatarType}
+              studentProfile={studentProfile}
+              onStudentProfileChange={setStudentProfile}
+              revisions={revisions}
+              theme={theme}
+            />
+          )}
         {activeTab === 'timer' && (
           <TimerSection
             subjects={subjects}
@@ -973,6 +1030,9 @@ export default function App() {
             sessions={sessions}
             onOpenAuth={() => setIsAuthModalOpen(true)}
           />
+        )}
+        {/* end gamer mode */}
+          </>
         )}
 
         {/* Footer */}
