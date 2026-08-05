@@ -106,50 +106,73 @@ export const CurriculumSection: React.FC<CurriculumSectionProps> = ({ subjects, 
                 </button>
 
                 {isOpen && (
-                  <div className="space-y-2 border-t border-slate-800 p-3">
-                    {entries.map((entry) => (
-                      <div key={entry.id} className="rounded-2xl border border-slate-800 bg-slate-900/80 p-3">
-                        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-                          <div className="min-w-0">
-                            <div className="font-semibold text-white">{entry.topic}</div>
-                            <div className="mt-1 text-xs text-slate-500">{entry.subjectName}</div>
-                          </div>
-                          <div className="flex flex-wrap gap-2">
-                            <button onClick={() => toggleEntry(entry.id, 'studied')} className="flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-950/70 px-2.5 py-2 text-xs font-medium text-slate-300">
-                              {entry.studied ? <CheckCircle2 className="w-4 h-4 text-emerald-400" /> : <Circle className="w-4 h-4 text-slate-500" />}
-                              {entry.studied ? 'Studied' : 'Mark studied'}
-                            </button>
-                            <button onClick={() => toggleEntry(entry.id, 'attemptedMcq')} className="flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-950/70 px-2.5 py-2 text-xs font-medium text-slate-300">
-                              {entry.attemptedMcq ? <CheckCircle2 className="w-4 h-4 text-emerald-400" /> : <Circle className="w-4 h-4 text-slate-500" />}
-                              {entry.attemptedMcq ? 'MCQ done' : 'MCQ pending'}
-                            </button>
-                          </div>
+                  <div className="border-t border-slate-800 p-3">
+                    <div className="overflow-x-auto">
+                      <div className="min-w-[980px] rounded-2xl border border-slate-800 bg-slate-950/50">
+                        <div className="grid grid-cols-[2.2fr_90px_90px_140px_140px_130px_1.4fr] gap-2 border-b border-slate-800 bg-slate-900/80 px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+                          <div>Topic</div>
+                          <div className="text-center">Read</div>
+                          <div className="text-center">MCQ</div>
+                          <div>First read</div>
+                          <div>Next revision</div>
+                          <div>Status</div>
+                          <div>Notes</div>
                         </div>
 
-                        <div className="mt-3 grid gap-3 xl:grid-cols-[1fr_1fr_1fr_1.3fr]">
-                          <label className="text-xs text-slate-400">
-                            <div className="mb-1 font-semibold uppercase tracking-[0.2em]">First reading</div>
-                            <input type="date" value={entry.firstReadingDate} onChange={(e) => updateEntry(entry.id, 'firstReadingDate', e.target.value)} className="w-full rounded-xl border border-slate-700 bg-slate-950/70 px-2 py-2 text-sm text-white" />
-                          </label>
-                          <label className="text-xs text-slate-400">
-                            <div className="mb-1 font-semibold uppercase tracking-[0.2em]">Next revision</div>
-                            <input type="date" value={entry.nextRevisionDate} onChange={(e) => updateEntry(entry.id, 'nextRevisionDate', e.target.value)} className="w-full rounded-xl border border-slate-700 bg-slate-950/70 px-2 py-2 text-sm text-white" />
-                          </label>
-                          <label className="text-xs text-slate-400">
-                            <div className="mb-1 font-semibold uppercase tracking-[0.2em]">Status</div>
-                            <select value={entry.revisionStatus} onChange={(e) => updateEntry(entry.id, 'revisionStatus', e.target.value)} className="w-full rounded-xl border border-slate-700 bg-slate-950/70 px-2 py-2 text-sm text-white">
+                        {entries.map((entry) => (
+                          <div key={entry.id} className="grid grid-cols-[2.2fr_90px_90px_140px_140px_130px_1.4fr] gap-2 border-b border-slate-800/70 px-3 py-3 last:border-b-0">
+                            <div className="min-w-0">
+                              <div className="font-semibold text-white">{entry.topic}</div>
+                              <div className="mt-1 text-xs text-slate-500">{entry.subjectName}</div>
+                            </div>
+                            <label className="flex items-center justify-center">
+                              <input
+                                type="checkbox"
+                                checked={entry.studied}
+                                onChange={() => toggleEntry(entry.id, 'studied')}
+                                className="h-4 w-4 rounded border-slate-700 bg-slate-900 text-indigo-500 focus:ring-indigo-500"
+                              />
+                            </label>
+                            <label className="flex items-center justify-center">
+                              <input
+                                type="checkbox"
+                                checked={entry.attemptedMcq}
+                                onChange={() => toggleEntry(entry.id, 'attemptedMcq')}
+                                className="h-4 w-4 rounded border-slate-700 bg-slate-900 text-indigo-500 focus:ring-indigo-500"
+                              />
+                            </label>
+                            <input
+                              type="date"
+                              value={entry.firstReadingDate}
+                              onChange={(e) => updateEntry(entry.id, 'firstReadingDate', e.target.value)}
+                              className="w-full rounded-xl border border-slate-700 bg-slate-950/70 px-2 py-2 text-sm text-white"
+                            />
+                            <input
+                              type="date"
+                              value={entry.nextRevisionDate}
+                              onChange={(e) => updateEntry(entry.id, 'nextRevisionDate', e.target.value)}
+                              className="w-full rounded-xl border border-slate-700 bg-slate-950/70 px-2 py-2 text-sm text-white"
+                            />
+                            <select
+                              value={entry.revisionStatus}
+                              onChange={(e) => updateEntry(entry.id, 'revisionStatus', e.target.value)}
+                              className="w-full rounded-xl border border-slate-700 bg-slate-950/70 px-2 py-2 text-sm text-white"
+                            >
                               {statusOptions.map((status) => (
                                 <option key={status} value={status}>{status.replace('-', ' ')}</option>
                               ))}
                             </select>
-                          </label>
-                          <label className="text-xs text-slate-400">
-                            <div className="mb-1 font-semibold uppercase tracking-[0.2em]">Notes</div>
-                            <textarea value={entry.notes} onChange={(e) => updateEntry(entry.id, 'notes', e.target.value)} rows={2} placeholder="Add notes" className="w-full rounded-xl border border-slate-700 bg-slate-950/70 px-2 py-2 text-sm text-white" />
-                          </label>
-                        </div>
+                            <textarea
+                              value={entry.notes}
+                              onChange={(e) => updateEntry(entry.id, 'notes', e.target.value)}
+                              rows={2}
+                              placeholder="Add notes"
+                              className="w-full rounded-xl border border-slate-700 bg-slate-950/70 px-2 py-2 text-sm text-white"
+                            />
+                          </div>
+                        ))}
                       </div>
-                    ))}
+                    </div>
                   </div>
                 )}
               </div>
