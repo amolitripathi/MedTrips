@@ -22,6 +22,7 @@ import {
   LineChart,
   Line,
   CartesianGrid,
+  Cell,
 } from 'recharts';
 import { BarChart3, TrendingUp, Calendar, BookOpen, FileText, Flame, Award } from 'lucide-react';
 
@@ -61,6 +62,14 @@ export const AnalyticsSection: React.FC<AnalyticsSectionProps> = ({ sessions, su
       minutes: sub.minutes,
       color: sub.color,
     }));
+
+  const subjectChartDisplayData = subjectChartData.length > 0
+    ? subjectChartData
+    : [{ subjectName: 'No study data yet', hours: 0, minutes: 0, color: '#64748b' }];
+
+  const paperChartDisplayData = paperChartData.length > 0
+    ? paperChartData
+    : [{ paperName: 'No study data yet', hours: 0, minutes: 0 }];
 
   return (
     <div className="space-y-8 max-w-7xl mx-auto text-white">
@@ -299,7 +308,7 @@ export const AnalyticsSection: React.FC<AnalyticsSectionProps> = ({ sessions, su
           <div className="h-80 w-full overflow-x-auto rounded-2xl border border-slate-800 bg-slate-950/40">
             <div className="min-w-[700px] h-80">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={subjectChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                <BarChart data={subjectChartDisplayData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
                   <XAxis dataKey="subjectName" stroke="#64748b" fontSize={11} tickLine={false} interval={0} angle={-20} textAnchor="end" height={60} />
                   <YAxis stroke="#64748b" fontSize={12} tickLine={false} />
@@ -308,7 +317,7 @@ export const AnalyticsSection: React.FC<AnalyticsSectionProps> = ({ sessions, su
                     formatter={(value, name, props) => [`${value ?? 0} hrs`, props.payload.subjectName]}
                   />
                   <Bar dataKey="hours" radius={[6, 6, 0, 0]}>
-                    {subjectChartData.map((entry, index) => (
+                    {subjectChartDisplayData.map((entry, index) => (
                       <Cell key={`${entry.subjectName}-${index}`} fill={entry.color} />
                     ))}
                   </Bar>
@@ -331,7 +340,7 @@ export const AnalyticsSection: React.FC<AnalyticsSectionProps> = ({ sessions, su
           <div className="h-80 w-full overflow-x-auto rounded-2xl border border-slate-800 bg-slate-950/40">
             <div className="min-w-[700px] h-80">
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={paperChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                <LineChart data={paperChartDisplayData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
                   <XAxis dataKey="paperName" stroke="#64748b" fontSize={11} tickLine={false} interval={0} angle={-20} textAnchor="end" height={60} />
                   <YAxis stroke="#64748b" fontSize={12} tickLine={false} />
