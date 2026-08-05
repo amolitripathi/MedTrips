@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { ActiveTab, NotificationItem } from '../types';
-import { Clock, BarChart3, BookOpen, Calendar, LayoutDashboard, Plus, RotateCcw, Download, Upload, Target, Trophy, FileText, CheckSquare, Users, ChevronDown, Link2, Bell, X, GraduationCap, LogOut } from 'lucide-react';
+import { Clock, BarChart3, BookOpen, Calendar, LayoutDashboard, Plus, RotateCcw, Download, Upload, Target, Trophy, FileText, CheckSquare, Users, ChevronDown, Link2, Bell, X, GraduationCap, LogOut, Gamepad2, BookOpenCheck } from 'lucide-react';
 
 interface NavbarProps {
   activeTab: ActiveTab;
@@ -13,6 +13,8 @@ interface NavbarProps {
   notifications: NotificationItem[];
   onRequestNotificationPermission: () => void;
   onMarkNotificationsRead: () => void;
+  mode: 'gamer' | 'learner';
+  onToggleMode: () => void;
   onLogout: () => void;
 }
 
@@ -27,6 +29,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   notifications,
   onRequestNotificationPermission,
   onMarkNotificationsRead,
+  mode,
+  onToggleMode,
   onLogout,
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -76,7 +80,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   const unreadCount = notifications.filter(item => !item.isRead).length;
 
   return (
-    <header className="bg-slate-900 border-slate-800 text-white border-b sticky top-0 z-40">
+    <header className={`${mode === 'learner' ? 'bg-[#161b22] border-[#30363d]' : 'bg-slate-900 border-slate-800'} text-white border-b sticky top-0 z-40`}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Logo & Minimalist View Dropdown */}
@@ -288,12 +292,17 @@ export const Navbar: React.FC<NavbarProps> = ({
               )}
             </div>
 
+            {/* Learner / Gamer mode toggle — replaces Log Time */}
             <button
-              onClick={onOpenLogModal}
-              className="flex items-center space-x-1.5 px-3.5 py-2 rounded-lg bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white text-sm font-medium shadow-md shadow-indigo-600/20 transition-all cursor-pointer"
+              onClick={onToggleMode}
+              className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-sm font-semibold transition-all border ${
+                mode === 'learner'
+                  ? 'bg-amber-500/15 border-amber-500/30 text-amber-300 hover:bg-amber-500/25'
+                  : 'bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 border-transparent text-white shadow-md shadow-indigo-600/20'
+              }`}
             >
-              <Plus className="w-4 h-4" />
-              <span className="hidden sm:inline">Log Time</span>
+              {mode === 'learner' ? <BookOpenCheck className="w-4 h-4" /> : <Gamepad2 className="w-4 h-4" />}
+              <span className="hidden sm:inline">{mode === 'learner' ? 'Learner' : 'Gamer'}</span>
             </button>
 
             {/* Data management buttons */}

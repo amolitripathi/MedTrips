@@ -20,6 +20,7 @@ import { LinksSection } from './components/LinksSection';
 import { LogSessionModal } from './components/LogSessionModal';
 import { AuthModal } from './components/AuthModal';
 import { FriendsSection } from './components/FriendsSection';
+import { AIAssistant } from './components/AIAssistant';
 import { db, auth, doc, setDoc, onSnapshot, onAuthStateChanged, getDoc, removeUndefinedDeep } from './lib/firebase';
 import { calculateStreaks } from './utils/studyStats';
 import { CurriculumSubject } from './types';
@@ -27,6 +28,14 @@ import { createCloudSyncGuard } from './utils/cloudSync';
 
 export default function App() {
   const theme = 'dark';
+  const [mode, setMode] = useState<'gamer' | 'learner'>(() =>
+    (localStorage.getItem('study_tracker_mode') as 'gamer' | 'learner') ?? 'gamer'
+  );
+  const toggleMode = () => setMode(prev => {
+    const next = prev === 'gamer' ? 'learner' : 'gamer';
+    localStorage.setItem('study_tracker_mode', next);
+    return next;
+  });
   const [activeTab, setActiveTab] = useState<ActiveTab>('dashboard');
   const [isLogModalOpen, setIsLogModalOpen] = useState(false);
   const [currentUser, setCurrentUser] = useState<any>(null);
@@ -801,10 +810,8 @@ export default function App() {
     if (e.target) e.target.value = '';
   };
 
-  const bgClass = theme === 'dark' ? 'bg-slate-950 text-slate-100' : 'bg-gray-50 text-gray-900';
-  const navBgClass = theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-gray-200';
-  const sidebarBgClass = theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-gray-200';
-  const cardBgClass = theme === 'dark' ? 'bg-slate-800' : 'bg-white';
+  const bgClass = mode === 'learner' ? 'bg-[#0d1117] text-[#e6edf3]' : 'bg-slate-950 text-slate-100';
+  const sidebarBgClass = mode === 'learner' ? 'bg-[#161b22] border-[#30363d]' : 'bg-slate-900 border-slate-800';
 
   return (
     <div className={`h-screen overflow-hidden ${bgClass} flex flex-col font-sans selection:bg-indigo-500 selection:text-white`}>
@@ -827,14 +834,16 @@ export default function App() {
           }
         }}
         onMarkNotificationsRead={() => setNotifications(prev => prev.map(item => ({ ...item, isRead: true })))}
+        mode={mode}
+        onToggleMode={toggleMode}
         onLogout={handleLogout}
       />
 
       {/* Layout with Sidebar */}
       <div className="flex flex-1 overflow-hidden">
         {/* Sidebar Navigation - Desktop */}
-        <aside className="hidden lg:flex w-72 bg-slate-900 border-slate-800 border-r flex-col py-6 px-4 overflow-y-auto flex-shrink-0 sticky top-0 h-[calc(100vh-57px)]">
-          <SidebarNav activeTab={activeTab} setActiveTab={setActiveTab} />
+        <aside className={`hidden lg:flex w-72 ${sidebarBgClass} border-r flex-col py-6 px-4 overflow-y-auto flex-shrink-0 sticky top-0 h-[calc(100vh-57px)]`}>
+          <SidebarNav activeTab={activeTab} setActiveTab={setActiveTab} mode={mode} />
         </aside>
 
         {/* Main Content Area */}
@@ -986,6 +995,9 @@ export default function App() {
         isOpen={isAuthModalOpen}
         onClose={() => setIsAuthModalOpen(false)}
       />
+
+      {/* AI Assistant - Learner mode only */}
+      {mode === 'learner' && <AIAssistant />}
     </div>
   );
 }
