@@ -965,6 +965,11 @@ export default function App() {
             onOpenAuth={() => setIsAuthModalOpen(true)}
           />
         )}
+
+        {/* Footer */}
+        <footer className="border-t border-slate-900 bg-slate-950 py-6 text-center text-xs text-slate-500">
+          <p>MedTrips &bull; Created for Amoli Tripathi &bull; Track every subject and paper with precision</p>
+        </footer>
       </main>
       </div>
 
@@ -981,11 +986,6 @@ export default function App() {
         isOpen={isAuthModalOpen}
         onClose={() => setIsAuthModalOpen(false)}
       />
-
-      {/* Footer */}
-      <footer className="border-t border-slate-900 bg-slate-950 py-6 text-center text-xs text-slate-500">
-        <p>MedTrips &bull; Created for Amoli Tripathi &bull; Track every subject and paper with precision</p>
-      </footer>
     </div>
   );
 }
