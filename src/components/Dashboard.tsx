@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Subject, StudySession, ActiveTab, StudyGoal, StudentProfile, RevisionItem } from '../types';
-import { calculateStreaks, getDailyAverage, getSubjectStats, formatDuration, getDailyStats, getDailyStatsWithGaps, getPaperStats, getWeeklyProductiveStats } from '../utils/studyStats';
+import { calculateStreaks, getDailyAverage, getSubjectStats, formatDuration, getDailyStats, getDailyStatsWithGaps, getPaperStatsGroupedByPaperName, getWeeklyProductiveStats } from '../utils/studyStats';
 import { Flame, Clock, Award, TrendingUp, BookOpen, ArrowRight, Plus, Calendar, Play, ChevronLeft, ChevronRight, ChartColumnBig } from 'lucide-react';
 import { BarChart, Bar, LineChart, Line, AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell } from 'recharts';
 import { StudentIdCard } from './StudentIdCard';
@@ -35,7 +35,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const { currentStreak, bestStreak } = calculateStreaks(sessions);
   const dailyAvgMinutes = getDailyAverage(sessions);
   const subjectStats = getSubjectStats(sessions, subjects);
-  const paperStats = getPaperStats(sessions, subjects);
   const weeklyProductiveStats = getWeeklyProductiveStats(sessions);
 
   const todayDate = new Date();
@@ -90,14 +89,14 @@ export const Dashboard: React.FC<DashboardProps> = ({
       color: sub.color,
       percentage: sub.percentage,
     }));
-  const paperChartData = [...paperStats]
+  const groupedPaperStats = getPaperStatsGroupedByPaperName(sessions, subjects);
+  const paperChartData = [...groupedPaperStats]
     .sort((a, b) => b.minutes - a.minutes)
     .slice(0, 10)
     .map((paper) => ({
       paperName: paper.paperName,
       hours: paper.hours,
       minutes: paper.minutes,
-      percentage: paper.percentage,
     }));
 
   // Calendar mini map
@@ -407,7 +406,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
           </div>
 
           <div className="h-80 w-full overflow-x-auto rounded-2xl border border-slate-800 bg-slate-950/40">
-            <div className="min-w-[900px] h-80">
+            <div className="min-w-[1100px] h-80">
               <ResponsiveContainer width="100%" height="100%">
                 {dashViewDays === 'line' ? (
                   <AreaChart data={dailyEntriesLineData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
@@ -537,7 +536,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
             <p className="text-xs text-slate-400">Top papers by logged time, matching the stats view layout</p>
           </div>
           <div className="h-72 w-full overflow-x-auto rounded-2xl border border-slate-800 bg-slate-950/40">
-            <div className="min-w-[500px] h-72">
+            <div className="min-w-[700px] h-72">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={paperChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />

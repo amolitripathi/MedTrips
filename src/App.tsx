@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Subject, StudySession, ActiveTab, TimerSettings, StudyGoal, Badge, Challenge, StudyNote, TodoItem, StudyLink, ExamDeadline, StudentProfile, RevisionItem, NotificationItem } from './types';
 import { DEFAULT_SUBJECTS, DEFAULT_SESSIONS, DEFAULT_TIMER_SETTINGS, DEFAULT_GOALS, DEFAULT_BADGES, DEFAULT_CHALLENGES, DEFAULT_NOTES, DEFAULT_TODOS, DEFAULT_LINKS, DEFAULT_EXAMS, DEFAULT_REVISION_ITEMS } from './data/initialData';
+import { buildCurriculumEntries } from './data/curriculumData';
 import doctorAvatar from './assets/images/animated_doctor_avatar_1783755080501.jpg';
 import { Navbar } from './components/Navbar';
 import { Dashboard } from './components/Dashboard';
@@ -9,6 +10,7 @@ import { AnalyticsSection } from './components/AnalyticsSection';
 import { RevisionSection } from './components/RevisionSection';
 import { HistorySection } from './components/HistorySection';
 import { SubjectsSection } from './components/SubjectsSection';
+import { CurriculumSection } from './components/CurriculumSection';
 import { GoalsSection } from './components/GoalsSection';
 import { GamificationSection } from './components/GamificationSection';
 import { NotesSection } from './components/NotesSection';
@@ -20,6 +22,7 @@ import { AuthModal } from './components/AuthModal';
 import { FriendsSection } from './components/FriendsSection';
 import { db, auth, doc, setDoc, onSnapshot, onAuthStateChanged, getDoc, removeUndefinedDeep } from './lib/firebase';
 import { calculateStreaks } from './utils/studyStats';
+import { CurriculumProgressEntry } from './types';
 import { createCloudSyncGuard } from './utils/cloudSync';
 
 export default function App() {
@@ -190,6 +193,14 @@ export default function App() {
     return DEFAULT_EXAMS;
   });
 
+  const [curriculumProgress, setCurriculumProgress] = useState<CurriculumProgressEntry[]>(() => {
+    const saved = localStorage.getItem('study_tracker_curriculum');
+    if (saved) {
+      try { return JSON.parse(saved); } catch { return buildCurriculumEntries(DEFAULT_SUBJECTS); }
+    }
+    return buildCurriculumEntries(DEFAULT_SUBJECTS);
+  });
+
   const markLocalChange = () => {
     if (!isApplyingRemoteRef.current) {
       lastLocalChangeAtRef.current = Date.now();
@@ -210,6 +221,7 @@ export default function App() {
     revisions,
     notifications,
     studentProfile,
+    curriculumProgress,
   });
 
   const sanitizeForFirestore = <T,>(value: T): T => removeUndefinedDeep(value) as T;
@@ -239,6 +251,7 @@ export default function App() {
       if (Array.isArray(data.revisions)) setRevisions(data.revisions as RevisionItem[]);
       if (Array.isArray(data.notifications)) setNotifications(data.notifications as NotificationItem[]);
       if (data.studentProfile) setStudentProfile(data.studentProfile as StudentProfile);
+      if (Array.isArray(data.curriculumProgress)) setCurriculumProgress(data.curriculumProgress as CurriculumProgressEntry[]);
       if (remoteUpdatedAt) {
         lastRemoteSnapshotAtRef.current = remoteUpdatedAt;
       }
@@ -414,6 +427,10 @@ export default function App() {
     localStorage.setItem('study_tracker_notifications', JSON.stringify(notifications));
   }, [notifications]);
 
+  useEffect(() => {
+    localStorage.setItem('study_tracker_curriculum', JSON.stringify(curriculumProgress));
+  }, [curriculumProgress]);
+
   // Save to Firestore when state changes (syncing across devices for the account)
   useEffect(() => {
     if (cloudQuotaExhausted || !currentUser || !isRemoteDataReady || !initialHydrationCompleteRef.current) return;
@@ -458,6 +475,7 @@ export default function App() {
           revisions,
           notifications,
           studentProfile,
+          curriculumProgress,
           updatedAt: now,
           updatedBy: currentUser.uid
         }), { merge: true });
@@ -708,6 +726,7 @@ export default function App() {
       setLinks(DEFAULT_LINKS);
       setRevisions(DEFAULT_REVISION_ITEMS);
       setNotifications([]);
+      setCurriculumProgress(buildCurriculumEntries(DEFAULT_SUBJECTS));
       localStorage.clear();
     }
   };
@@ -827,6 +846,13 @@ export default function App() {
         )}
         {activeTab === 'analytics' && (
           <AnalyticsSection sessions={sessions} subjects={subjects} />
+        )}
+        {activeTab === 'curriculum' && (
+          <CurriculumSection
+            subjects={subjects}
+            curriculumProgress={curriculumProgress}
+            onUpdateCurriculumProgress={setCurriculumProgress}
+          />
         )}
         {activeTab === 'revision' && (
           <RevisionSection

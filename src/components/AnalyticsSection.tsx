@@ -9,6 +9,7 @@ import {
   getYearlyStats,
   getSubjectStats,
   getPaperStats,
+  getPaperStatsGroupedByPaperName,
   getWeeklyProductiveStats,
   formatDuration,
 } from '../utils/studyStats';
@@ -46,9 +47,10 @@ export const AnalyticsSection: React.FC<AnalyticsSectionProps> = ({ sessions, su
   const weeklyProductiveStats = getWeeklyProductiveStats(sessions);
 
   const totalMinutesAll = sessions.reduce((acc, s) => acc + s.durationMinutes, 0);
-  const paperChartData = [...paperStats]
+  const groupedPaperStats = getPaperStatsGroupedByPaperName(sessions, subjects);
+  const paperChartData = [...groupedPaperStats]
     .sort((a, b) => b.minutes - a.minutes)
-    .slice(0, 10)
+    .slice(0, 12)
     .map((paper) => ({
       paperName: paper.paperName,
       hours: paper.hours,
@@ -183,7 +185,7 @@ export const AnalyticsSection: React.FC<AnalyticsSectionProps> = ({ sessions, su
         </div>
 
         <div className="h-80 w-full overflow-x-auto rounded-3xl">
-          <div className="min-w-[900px] h-80">
+          <div className="min-w-[1100px] h-80">
             <ResponsiveContainer width="100%" height="100%">
               {dailyViewDays === 'line' ? (
                 <LineChart data={dailyStatsWithGaps} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>

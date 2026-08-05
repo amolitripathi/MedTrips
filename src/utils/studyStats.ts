@@ -322,6 +322,34 @@ export const getPaperStats = (sessions: StudySession[], subjects: Subject[]): Pa
   return result.sort((a, b) => b.minutes - a.minutes);
 };
 
+export const getPaperStatsGroupedByPaperName = (sessions: StudySession[], subjects: Subject[]) => {
+  const groupedMap = new Map<string, { minutes: number; paperName: string; subjectName: string }>();
+
+  sessions.forEach((session) => {
+    const key = `${session.paperId}-${session.subjectId}`;
+    const existing = groupedMap.get(key);
+    if (existing) {
+      existing.minutes += session.durationMinutes;
+      return;
+    }
+
+    const subject = subjects.find((sub) => sub.id === session.subjectId);
+    const paper = subject?.papers.find((entry) => entry.id === session.paperId);
+    groupedMap.set(key, {
+      minutes: session.durationMinutes,
+      paperName: paper?.name || 'General Paper',
+      subjectName: subject?.name || 'Unknown Subject',
+    });
+  });
+
+  return Array.from(groupedMap.values())
+    .sort((a, b) => b.minutes - a.minutes)
+    .map((entry) => ({
+      ...entry,
+      hours: Number((entry.minutes / 60).toFixed(1)),
+    }));
+};
+
 // Calculate daily average study time (over days with activity or total active days)
 export const getDailyAverage = (sessions: StudySession[]): number => {
   if (sessions.length === 0) return 0;

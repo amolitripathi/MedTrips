@@ -134,5 +134,20 @@ export interface ExamDeadline {
   createdAt: number;
 }
 
-export type ActiveTab = 'dashboard' | 'timer' | 'analytics' | 'history' | 'subjects' | 'goals' | 'gamification' | 'notes' | 'calendar' | 'todos' | 'friends' | 'links' | 'revision';
+export type CurriculumRevisionStatus = 'pending' | 'on-time' | 'late' | 'completed';
+
+export interface CurriculumProgressEntry {
+  id: string;
+  subjectId: string;
+  subjectName: string;
+  topic: string;
+  studied: boolean;
+  attemptedMcq: boolean;
+  firstReadingDate: string;
+  nextRevisionDate: string;
+  revisionStatus: CurriculumRevisionStatus;
+  notes: string;
+}
+
+export type ActiveTab = 'dashboard' | 'timer' | 'analytics' | 'history' | 'subjects' | 'goals' | 'gamification' | 'notes' | 'calendar' | 'todos' | 'friends' | 'links' | 'revision' | 'curriculum';
 
