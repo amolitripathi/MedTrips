@@ -91,7 +91,7 @@ export const CurriculumSection: React.FC<CurriculumSectionProps> = ({ subjects, 
           {subjects.length === 0 ? (
             <div className="py-8 text-center text-sm text-slate-500">Add subjects first to populate the curriculum planner.</div>
           ) : Object.entries(groupedEntries).map(([subjectName, entries]) => {
-            const isOpen = openSubjects[subjectName] ?? true;
+            const isOpen = openSubjects[subjectName] ?? false;
             return (
               <div key={subjectName} className="rounded-2xl border border-slate-800 bg-slate-950/60">
                 <button
