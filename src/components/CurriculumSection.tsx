@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { BookOpen, CheckCircle2, Circle, GraduationCap, CalendarDays, ClipboardList } from 'lucide-react';
+import { BookOpen, CheckCircle2, Circle, GraduationCap, CalendarDays, ClipboardList, ChevronDown, Search } from 'lucide-react';
 import { CurriculumProgressEntry, CurriculumRevisionStatus, Subject } from '../types';
 
 interface CurriculumSectionProps {
@@ -18,9 +18,13 @@ const statusStyles: Record<CurriculumRevisionStatus, string> = {
 
 export const CurriculumSection: React.FC<CurriculumSectionProps> = ({ subjects, curriculumProgress, onUpdateCurriculumProgress }) => {
   const [filter, setFilter] = useState('all');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [openSubjects, setOpenSubjects] = useState<Record<string, boolean>>({});
 
   const groupedEntries = useMemo(() => {
     const filtered = curriculumProgress.filter((entry) => {
+      const matchesSearch = `${entry.subjectName} ${entry.topic}`.toLowerCase().includes(searchQuery.toLowerCase());
+      if (!matchesSearch) return false;
       if (filter === 'all') return true;
       if (filter === 'studied') return entry.studied;
       if (filter === 'pending') return !entry.studied;
@@ -32,7 +36,7 @@ export const CurriculumSection: React.FC<CurriculumSectionProps> = ({ subjects, 
       acc[key] = [...(acc[key] ?? []), entry];
       return acc;
     }, {});
-  }, [curriculumProgress, filter]);
+  }, [curriculumProgress, filter, searchQuery]);
 
   const toggleEntry = (id: string, field: keyof Pick<CurriculumProgressEntry, 'studied' | 'attemptedMcq'>) => {
     onUpdateCurriculumProgress(curriculumProgress.map((entry) => entry.id === id ? { ...entry, [field]: !entry[field] } : entry));
@@ -51,88 +55,106 @@ export const CurriculumSection: React.FC<CurriculumSectionProps> = ({ subjects, 
               <GraduationCap className="w-5 h-5" />
               <h2 className="text-xl font-bold">Curriculum Tracker</h2>
             </div>
-            <p className="mt-2 text-sm text-slate-400">Track every subject topic, first reading, MCQ attempts, and revision compliance in one place.</p>
+            <p className="mt-2 text-sm text-slate-400">Track chapters, topics, MCQ attempts, first read dates, and revision timing in a structured subject-wise planner.</p>
           </div>
-          <div className="flex flex-wrap gap-2">
-            {['all', 'studied', 'pending', 'on-time', 'late', 'completed'].map((option) => (
-              <button
-                key={option}
-                onClick={() => setFilter(option)}
-                className={`rounded-full border px-3 py-1.5 text-xs font-semibold capitalize transition ${filter === option ? 'border-indigo-500 bg-indigo-500/20 text-indigo-200' : 'border-slate-700 bg-slate-800 text-slate-300'}`}
-              >
-                {option.replace('-', ' ')}
-              </button>
-            ))}
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <div className="flex items-center gap-2 rounded-2xl border border-slate-700 bg-slate-950/70 px-3 py-2 text-sm text-slate-300">
+              <Search className="w-4 h-4 text-slate-500" />
+              <input
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Spotlight search"
+                className="w-44 bg-transparent outline-none placeholder:text-slate-500"
+              />
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {['all', 'studied', 'pending', 'on-time', 'late', 'completed'].map((option) => (
+                <button
+                  key={option}
+                  onClick={() => setFilter(option)}
+                  className={`rounded-full border px-3 py-1.5 text-xs font-semibold capitalize transition ${filter === option ? 'border-indigo-500 bg-indigo-500/20 text-indigo-200' : 'border-slate-700 bg-slate-800 text-slate-300'}`}
+                >
+                  {option.replace('-', ' ')}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       </div>
 
-      <div className="overflow-x-auto rounded-3xl border border-slate-800 bg-slate-900 shadow-xl">
-        <div className="min-w-[1100px] p-4">
-          <div className="grid grid-cols-[1.4fr_0.7fr_0.7fr_0.8fr_0.8fr_1fr_1fr] gap-3 border-b border-slate-800 pb-3 text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
-            <span>Subject / Topic</span>
-            <span>Studied</span>
-            <span>MCQ</span>
-            <span>First read</span>
-            <span>Next revision</span>
-            <span>Status</span>
-            <span>Notes</span>
-          </div>
+      <div className="rounded-3xl border border-slate-800 bg-slate-900 shadow-xl">
+        <div className="border-b border-slate-800 px-4 py-3 text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
+          Subject-wise topic planner
+        </div>
 
+        <div className="space-y-3 p-4">
           {subjects.length === 0 ? (
             <div className="py-8 text-center text-sm text-slate-500">Add subjects first to populate the curriculum planner.</div>
-          ) : Object.entries(groupedEntries).map(([subjectName, entries]) => (
-            <div key={subjectName} className="mt-4 space-y-2">
-              <div className="flex items-center gap-2 text-sm font-semibold text-slate-200">
-                <BookOpen className="w-4 h-4 text-indigo-400" />
-                {subjectName}
-              </div>
-              {entries.map((entry) => (
-                <div key={entry.id} className="grid grid-cols-[1.4fr_0.7fr_0.7fr_0.8fr_0.8fr_1fr_1fr] gap-3 rounded-2xl border border-slate-800 bg-slate-950/70 p-3 text-sm">
-                  <div>
-                    <div className="font-semibold text-white">{entry.topic}</div>
-                    <div className="text-xs text-slate-500">{entry.subjectName}</div>
-                  </div>
-                  <button onClick={() => toggleEntry(entry.id, 'studied')} className="flex items-center justify-center gap-2 rounded-xl border border-slate-700 bg-slate-900 px-2 py-2 text-xs font-medium text-slate-300 hover:border-indigo-500">
-                    {entry.studied ? <CheckCircle2 className="w-4 h-4 text-emerald-400" /> : <Circle className="w-4 h-4 text-slate-500" />}
-                    {entry.studied ? 'Done' : 'Pending'}
-                  </button>
-                  <button onClick={() => toggleEntry(entry.id, 'attemptedMcq')} className="flex items-center justify-center gap-2 rounded-xl border border-slate-700 bg-slate-900 px-2 py-2 text-xs font-medium text-slate-300 hover:border-indigo-500">
-                    {entry.attemptedMcq ? <CheckCircle2 className="w-4 h-4 text-emerald-400" /> : <Circle className="w-4 h-4 text-slate-500" />}
-                    {entry.attemptedMcq ? 'Yes' : 'No'}
-                  </button>
-                  <input
-                    type="date"
-                    value={entry.firstReadingDate}
-                    onChange={(e) => updateEntry(entry.id, 'firstReadingDate', e.target.value)}
-                    className="rounded-xl border border-slate-700 bg-slate-900 px-2 py-2 text-xs text-white"
-                  />
-                  <input
-                    type="date"
-                    value={entry.nextRevisionDate}
-                    onChange={(e) => updateEntry(entry.id, 'nextRevisionDate', e.target.value)}
-                    className="rounded-xl border border-slate-700 bg-slate-900 px-2 py-2 text-xs text-white"
-                  />
-                  <select
-                    value={entry.revisionStatus}
-                    onChange={(e) => updateEntry(entry.id, 'revisionStatus', e.target.value)}
-                    className="rounded-xl border border-slate-700 bg-slate-900 px-2 py-2 text-xs text-white"
-                  >
-                    {statusOptions.map((status) => (
-                      <option key={status} value={status}>{status.replace('-', ' ')}</option>
+          ) : Object.entries(groupedEntries).map(([subjectName, entries]) => {
+            const isOpen = openSubjects[subjectName] ?? true;
+            return (
+              <div key={subjectName} className="rounded-2xl border border-slate-800 bg-slate-950/60">
+                <button
+                  onClick={() => setOpenSubjects((prev) => ({ ...prev, [subjectName]: !isOpen }))}
+                  className="flex w-full items-center justify-between rounded-2xl px-4 py-3 text-left text-sm font-semibold text-slate-200"
+                >
+                  <span className="flex items-center gap-2"><BookOpen className="w-4 h-4 text-indigo-400" />{subjectName}</span>
+                  <span className="flex items-center gap-2 text-xs text-slate-400">
+                    {entries.length} topics
+                    <ChevronDown className={`w-4 h-4 transition ${isOpen ? 'rotate-180' : ''}`} />
+                  </span>
+                </button>
+
+                {isOpen && (
+                  <div className="space-y-2 border-t border-slate-800 p-3">
+                    {entries.map((entry) => (
+                      <div key={entry.id} className="rounded-2xl border border-slate-800 bg-slate-900/80 p-3">
+                        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                          <div className="min-w-0">
+                            <div className="font-semibold text-white">{entry.topic}</div>
+                            <div className="mt-1 text-xs text-slate-500">{entry.subjectName}</div>
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            <button onClick={() => toggleEntry(entry.id, 'studied')} className="flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-950/70 px-2.5 py-2 text-xs font-medium text-slate-300">
+                              {entry.studied ? <CheckCircle2 className="w-4 h-4 text-emerald-400" /> : <Circle className="w-4 h-4 text-slate-500" />}
+                              {entry.studied ? 'Studied' : 'Mark studied'}
+                            </button>
+                            <button onClick={() => toggleEntry(entry.id, 'attemptedMcq')} className="flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-950/70 px-2.5 py-2 text-xs font-medium text-slate-300">
+                              {entry.attemptedMcq ? <CheckCircle2 className="w-4 h-4 text-emerald-400" /> : <Circle className="w-4 h-4 text-slate-500" />}
+                              {entry.attemptedMcq ? 'MCQ done' : 'MCQ pending'}
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="mt-3 grid gap-3 xl:grid-cols-[1fr_1fr_1fr_1.3fr]">
+                          <label className="text-xs text-slate-400">
+                            <div className="mb-1 font-semibold uppercase tracking-[0.2em]">First reading</div>
+                            <input type="date" value={entry.firstReadingDate} onChange={(e) => updateEntry(entry.id, 'firstReadingDate', e.target.value)} className="w-full rounded-xl border border-slate-700 bg-slate-950/70 px-2 py-2 text-sm text-white" />
+                          </label>
+                          <label className="text-xs text-slate-400">
+                            <div className="mb-1 font-semibold uppercase tracking-[0.2em]">Next revision</div>
+                            <input type="date" value={entry.nextRevisionDate} onChange={(e) => updateEntry(entry.id, 'nextRevisionDate', e.target.value)} className="w-full rounded-xl border border-slate-700 bg-slate-950/70 px-2 py-2 text-sm text-white" />
+                          </label>
+                          <label className="text-xs text-slate-400">
+                            <div className="mb-1 font-semibold uppercase tracking-[0.2em]">Status</div>
+                            <select value={entry.revisionStatus} onChange={(e) => updateEntry(entry.id, 'revisionStatus', e.target.value)} className="w-full rounded-xl border border-slate-700 bg-slate-950/70 px-2 py-2 text-sm text-white">
+                              {statusOptions.map((status) => (
+                                <option key={status} value={status}>{status.replace('-', ' ')}</option>
+                              ))}
+                            </select>
+                          </label>
+                          <label className="text-xs text-slate-400">
+                            <div className="mb-1 font-semibold uppercase tracking-[0.2em]">Notes</div>
+                            <textarea value={entry.notes} onChange={(e) => updateEntry(entry.id, 'notes', e.target.value)} rows={2} placeholder="Add notes" className="w-full rounded-xl border border-slate-700 bg-slate-950/70 px-2 py-2 text-sm text-white" />
+                          </label>
+                        </div>
+                      </div>
                     ))}
-                  </select>
-                  <textarea
-                    value={entry.notes}
-                    onChange={(e) => updateEntry(entry.id, 'notes', e.target.value)}
-                    rows={2}
-                    placeholder="Notes"
-                    className="min-h-[48px] rounded-xl border border-slate-700 bg-slate-900 px-2 py-2 text-xs text-white"
-                  />
-                </div>
-              ))}
-            </div>
-          ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       </div>
 

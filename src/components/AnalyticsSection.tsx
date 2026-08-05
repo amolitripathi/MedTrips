@@ -137,7 +137,7 @@ export const AnalyticsSection: React.FC<AnalyticsSectionProps> = ({ sessions, su
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
           <div>
             <h3 className="text-lg font-bold">Everyday Study Trend</h3>
-            <p className="text-xs text-slate-400">Study hours logged over time</p>
+            <p className="text-xs text-slate-400">Scrollable daily view with all entries preserved for detail</p>
           </div>
           <div className="flex items-center space-x-1 bg-slate-800 p-1 rounded-xl flex-wrap gap-1">
             {[7, 30].map((days) => (
@@ -230,7 +230,7 @@ export const AnalyticsSection: React.FC<AnalyticsSectionProps> = ({ sessions, su
       <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 sm:p-8 shadow-xl">
         <div className="mb-6">
           <h3 className="text-lg font-bold">Productive Hours of the Week</h3>
-          <p className="text-xs text-slate-400">Total study time by weekday to show when you are most productive</p>
+          <p className="text-xs text-slate-400">A clearer weekly rhythm view for your strongest study days</p>
         </div>
         <div className="h-72 w-full">
           <ResponsiveContainer width="100%" height="100%">
