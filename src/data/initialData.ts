@@ -124,7 +124,7 @@ const addDays = (date: Date, days: number) => {
   return copy;
 };
 
-const toISODate = (date: Date) => date.toISOString().split('T')[0];
+const toISODate = (date: Date) => date.toLocaleDateString('en-CA');
 
 const today = new Date();
 

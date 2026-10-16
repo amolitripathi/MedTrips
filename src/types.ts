@@ -21,6 +21,8 @@ export interface StudySession {
   durationMinutes: number;
   notes?: string;
   createdAt: number;
+  topicId?: string; // linked curriculum topic (optional)
+  topicName?: string;
 }
 
 export type RevisionStage = 'first' | 'second' | 'third' | 'monthly';
@@ -145,6 +147,13 @@ export interface CurriculumTopic {
   nextRevisionDate: string;
   revisionStatus: CurriculumRevisionStatus;
   notes: string;
+  // Mastery milestones. Read = `studied`, MCQ practice = `attemptedMcq`.
+  notesDone?: boolean;
+  assignmentDone?: boolean;
+  reviewDone?: boolean;
+  revisionCount?: number;
+  lastRevisedAt?: string; // YYYY-MM-DD
+  highYield?: boolean;
 }
 
 export interface CurriculumHeading {

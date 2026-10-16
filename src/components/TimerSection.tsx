@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Subject, TimerMode, TimerSettings, StudySession } from '../types';
+import { Subject, TimerMode, TimerSettings, StudySession, CurriculumSubject, StudyGoal, ExamDeadline } from '../types';
+import { TodayStrip } from './TodayStrip';
+import { flattenTopics } from '../utils/mastery';
 import { Play, Pause, RotateCcw, CheckCircle2, Flame, Bell, Settings2, Clock, Volume2, VolumeX, Headphones, CloudRain, Wind, Radio } from 'lucide-react';
 import { formatDuration } from '../utils/studyStats';
 import confetti from 'canvas-confetti';
@@ -10,6 +12,11 @@ interface TimerSectionProps {
   onUpdateTimerSettings: (settings: TimerSettings) => void;
   onAddSession: (session: Omit<StudySession, 'id' | 'createdAt'>) => void;
   onNavigateToStats: () => void;
+  curriculumSubjects?: CurriculumSubject[];
+  sessions?: StudySession[];
+  goals?: StudyGoal[];
+  exams?: ExamDeadline[];
+  onOpenCurriculum?: () => void;
 }
 
 export const TimerSection: React.FC<TimerSectionProps> = ({
@@ -18,6 +25,11 @@ export const TimerSection: React.FC<TimerSectionProps> = ({
   onUpdateTimerSettings,
   onAddSession,
   onNavigateToStats,
+  curriculumSubjects = [],
+  sessions = [],
+  goals = [],
+  exams = [],
+  onOpenCurriculum,
 }) => {
   const getSavedTimerSnapshot = () => {
     try {
@@ -42,6 +54,26 @@ export const TimerSection: React.FC<TimerSectionProps> = ({
   const [selectedSubjectId, setSelectedSubjectId] = useState(subjects[0]?.id || '');
   const selectedSubject = subjects.find(s => s.id === selectedSubjectId);
   const [selectedPaperId, setSelectedPaperId] = useState(selectedSubject?.papers[0]?.id || '');
+  const [selectedTopicId, setSelectedTopicId] = useState<string>(() => localStorage.getItem('study_tracker_timer_topic') || '');
+  const topicOptions = flattenTopics(curriculumSubjects);
+  const selectedTopic = topicOptions.find(({ topic }) => topic.id === selectedTopicId)?.topic;
+  // Extra fields stamped on every saved session: linked topic plus start/end clock times for the timeline.
+  const sessionExtras = (minutes: number) => {
+    const end = new Date();
+    const start = new Date(end.getTime() - minutes * 60000);
+    const hhmm = (d: Date) => `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+    const sameDay = start.toDateString() === end.toDateString();
+    return {
+      ...(selectedTopic ? { topicId: selectedTopic.id, topicName: selectedTopic.name } : {}),
+      startTime: sameDay ? hhmm(start) : '00:00',
+      endTime: hhmm(end),
+    };
+  };
+  const sessionExtrasRef = useRef(sessionExtras);
+  sessionExtrasRef.current = sessionExtras;
+  useEffect(() => {
+    try { localStorage.setItem('study_tracker_timer_topic', selectedTopicId); } catch { /* storage unavailable */ }
+  }, [selectedTopicId]);
 
   // Custom countdown / timer duration state in seconds
   const [customMinutes, setCustomMinutes] = useState<number>(() => {
@@ -335,9 +367,10 @@ export const TimerSection: React.FC<TimerSectionProps> = ({
               onAddSession({
                 subjectId: selectedSubjectId,
                 paperId: selectedPaperId || 'general',
-                date: new Date().toISOString().split('T')[0],
+                date: new Date().toLocaleDateString('en-CA'),
                 durationMinutes: earnedMinutes,
                 notes: 'Completed Pomodoro session',
+                ...sessionExtrasRef.current(earnedMinutes),
               });
               setSessionCompletedMsg(`Pomodoro finished! Logged ${earnedMinutes} minutes.`);
               confetti({ particleCount: 120, spread: 90, origin: { y: 0.6 } });
@@ -346,9 +379,10 @@ export const TimerSection: React.FC<TimerSectionProps> = ({
               onAddSession({
                 subjectId: selectedSubjectId,
                 paperId: selectedPaperId || 'general',
-                date: new Date().toISOString().split('T')[0],
+                date: new Date().toLocaleDateString('en-CA'),
                 durationMinutes: earnedMinutes,
                 notes: 'Completed Countdown timer session',
+                ...sessionExtrasRef.current(earnedMinutes),
               });
               setSessionCompletedMsg(`Countdown finished! Logged ${earnedMinutes} minutes.`);
               confetti({ particleCount: 120, spread: 90, origin: { y: 0.6 } });
@@ -375,6 +409,19 @@ export const TimerSection: React.FC<TimerSectionProps> = ({
     }
     setIsRunning(true);
   };
+  const toggleTimerRef = useRef(toggleTimer);
+  toggleTimerRef.current = toggleTimer;
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.code !== 'Space' || e.repeat) return;
+      const el = e.target as HTMLElement | null;
+      if (el && (/^(INPUT|SELECT|TEXTAREA|BUTTON)$/.test(el.tagName) || el.isContentEditable)) return;
+      e.preventDefault();
+      toggleTimerRef.current();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
 
   const resetTimer = () => {
     setIsRunning(false);
@@ -409,9 +456,10 @@ export const TimerSection: React.FC<TimerSectionProps> = ({
     onAddSession({
       subjectId: selectedSubjectId,
       paperId: selectedPaperId || 'general',
-      date: new Date().toISOString().split('T')[0],
+      date: new Date().toLocaleDateString('en-CA'),
       durationMinutes: durationMins,
       notes: `Recorded from ${mode} timer session`,
+      ...sessionExtras(durationMins),
     });
 
     setSessionCompletedMsg(`Successfully logged ${formatDuration(durationMins)}!`);
@@ -451,6 +499,15 @@ export const TimerSection: React.FC<TimerSectionProps> = ({
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
+      <TodayStrip
+        sessions={sessions}
+        goals={goals}
+        exams={exams}
+        curriculumSubjects={curriculumSubjects}
+        subjectColor={(id) => subjects.find((x) => x.id === id)?.color || '#6366f1'}
+        onOpenCurriculum={onOpenCurriculum}
+      />
+
       {/* Header & Mode Selector */}
       <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl text-white">
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pb-6 border-b border-slate-800">
@@ -623,6 +680,33 @@ export const TimerSection: React.FC<TimerSectionProps> = ({
               <option value="general">General Study</option>
             )}
           </select>
+        </div>
+
+        <div className="sm:col-span-2">
+          <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">
+            Syllabus topic (optional)
+          </label>
+          {topicOptions.length === 0 ? (
+            <div className="text-xs text-slate-500">
+              Add subjects in the Curriculum tab and you can tag each session with the exact topic you are studying.
+              {onOpenCurriculum && <button onClick={onOpenCurriculum} className="ml-1 text-indigo-400 hover:underline">Open Curriculum</button>}
+            </div>
+          ) : (
+            <select
+              value={selectedTopicId}
+              onChange={(e) => setSelectedTopicId(e.target.value)}
+              className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            >
+              <option value="">No specific topic</option>
+              {curriculumSubjects.map((cs) => (
+                <optgroup key={cs.id} label={cs.name}>
+                  {cs.headings.flatMap((h) => h.topics.map((t) => (
+                    <option key={t.id} value={t.id}>{h.name} - {t.name}</option>
+                  )))}
+                </optgroup>
+              ))}
+            </select>
+          )}
         </div>
       </div>
 

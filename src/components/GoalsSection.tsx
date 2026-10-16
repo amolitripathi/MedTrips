@@ -61,7 +61,7 @@ export const GoalsSection: React.FC<GoalsSectionProps> = ({
       for (let i = 29; i >= 0; i -= 1) {
         const date = new Date(now);
         date.setDate(date.getDate() - i);
-        const key = date.toISOString().split('T')[0];
+        const key = date.toLocaleDateString('en-CA');
         counts.set(key, 0);
       }
 
@@ -74,15 +74,15 @@ export const GoalsSection: React.FC<GoalsSectionProps> = ({
       for (let i = 11; i >= 0; i -= 1) {
         const weekStart = new Date(now);
         weekStart.setDate(weekStart.getDate() - weekStart.getDay() - 7 * i);
-        const key = weekStart.toISOString().split('T')[0];
+        const key = weekStart.toLocaleDateString('en-CA');
         counts.set(key, 0);
       }
 
       filteredSessions.forEach((session) => {
-        const sessionDate = new Date(session.date);
+        const sessionDate = new Date(`${session.date}T00:00:00`);
         const weekStart = new Date(sessionDate);
         weekStart.setDate(sessionDate.getDate() - sessionDate.getDay());
-        const key = weekStart.toISOString().split('T')[0];
+        const key = weekStart.toLocaleDateString('en-CA');
         if (counts.has(key)) {
           counts.set(key, (counts.get(key) || 0) + session.durationMinutes);
         }
@@ -105,7 +105,7 @@ export const GoalsSection: React.FC<GoalsSectionProps> = ({
     return Array.from(counts.values()).filter((minutes) => minutes >= goal.targetMinutes).length;
   };
 
-  const todayStr = new Date().toISOString().split('T')[0];
+  const todayStr = new Date().toLocaleDateString('en-CA');
 
   const getGoalProgress = (goal: StudyGoal) => {
     let currentMins = 0;
@@ -121,13 +121,13 @@ export const GoalsSection: React.FC<GoalsSectionProps> = ({
       weekAgo.setDate(weekAgo.getDate() - 7);
       currentMins = sessions
         .filter(s => {
-          const d = new Date(s.date);
+          const d = new Date(`${s.date}T00:00:00`);
           return d >= weekAgo && d <= now && (!goal.subjectId || s.subjectId === goal.subjectId);
         })
         .reduce((acc, s) => acc + s.durationMinutes, 0);
     } else if (goal.type === 'monthly') {
       // Current calendar month (YYYY-MM)
-      const currentMonthKey = now.toISOString().substring(0, 7);
+      const currentMonthKey = now.toLocaleDateString('en-CA').substring(0, 7);
       currentMins = sessions
         .filter(s => s.date.startsWith(currentMonthKey) && (!goal.subjectId || s.subjectId === goal.subjectId))
         .reduce((acc, s) => acc + s.durationMinutes, 0);

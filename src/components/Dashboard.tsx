@@ -44,7 +44,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const [dashMonth, setDashMonth] = useState(todayDate.getMonth());
 
   // Today's total study time
-  const todayStr = todayDate.toISOString().split('T')[0];
+  const todayStr = todayDate.toLocaleDateString('en-CA');
   const todayMinutes = sessions
     .filter(s => s.date === todayStr)
     .reduce((acc, s) => acc + s.durationMinutes, 0);

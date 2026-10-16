@@ -28,7 +28,7 @@ export const CalendarSection: React.FC<CalendarSectionProps> = ({
   // Add Exam Modal state
   const [isExamModalOpen, setIsExamModalOpen] = useState(false);
   const [examTitle, setExamTitle] = useState('');
-  const [examDate, setExamDate] = useState(todayDate.toISOString().split('T')[0]);
+  const [examDate, setExamDate] = useState(todayDate.toLocaleDateString('en-CA'));
   const [examSubjectId, setExamSubjectId] = useState(subjects[0]?.id || '');
   const [examDescription, setExamDescription] = useState('');
 

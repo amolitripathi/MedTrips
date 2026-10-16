@@ -297,7 +297,7 @@ export default function App() {
   };
 
   useEffect(() => {
-    const todayStr = new Date().toISOString().split('T')[0];
+    const todayStr = new Date().toLocaleDateString('en-CA');
     const reminderKey = `study_tracker_daily_reminder_${todayStr}`;
 
     const checkDailyReminder = () => {
@@ -374,6 +374,11 @@ export default function App() {
 
     return () => unsubscribe();
   }, [currentUser, cloudQuotaExhausted, isRemoteDataReady]);
+
+  const handleUpdateCurriculum = (next: CurriculumSubject[]) => {
+    markLocalChange();
+    setCurriculumSubjects(next);
+  };
 
   const handleAddExam = (exam: Omit<ExamDeadline, 'id' | 'createdAt'>) => {
     markLocalChange();
@@ -517,7 +522,7 @@ export default function App() {
     };
     const timer = setTimeout(saveToCloud, 1500);
     return () => clearTimeout(timer);
-  }, [subjects, sessions, timerSettings, goals, badges, challenges, notes, todos, links, exams, revisions, studentProfile, currentUser, cloudQuotaExhausted, isRemoteDataReady]);
+  }, [subjects, sessions, timerSettings, goals, badges, challenges, notes, todos, links, exams, revisions, notifications, studentProfile, curriculumSubjects, currentUser, cloudQuotaExhausted, isRemoteDataReady]);
 
   const { currentStreak: streak } = calculateStreaks(sessions);
 
@@ -564,7 +569,7 @@ export default function App() {
         topic: `${subject?.name || 'General Study'} • ${paper?.name || 'General Paper'}`,
         stage,
         lastStudiedAt: newSession.createdAt,
-        nextRevisionAt: new Date(newSession.createdAt + offsetDays * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        nextRevisionAt: new Date(newSession.createdAt + offsetDays * 24 * 60 * 60 * 1000).toLocaleDateString('en-CA'),
       })),
       ...prev,
     ]);
@@ -764,7 +769,7 @@ export default function App() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `study_tracker_backup_${new Date().toISOString().split('T')[0]}.json`;
+    a.download = `study_tracker_backup_${new Date().toLocaleDateString('en-CA')}.json`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -778,7 +783,7 @@ export default function App() {
       return {
         ...item,
         lastStudiedAt,
-        nextRevisionAt: new Date(lastStudiedAt + scheduledOffset * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        nextRevisionAt: new Date(lastStudiedAt + scheduledOffset * 24 * 60 * 60 * 1000).toLocaleDateString('en-CA'),
       };
     }));
   };
@@ -869,7 +874,7 @@ export default function App() {
                 currentUserEmail={currentUser?.email ?? null}
                 subjects={subjects}
                 curriculumSubjects={curriculumSubjects}
-                onUpdateCurriculumSubjects={setCurriculumSubjects}
+                onUpdateCurriculumSubjects={handleUpdateCurriculum}
                 notes={notes}
                 onAddNote={handleAddNote}
                 onDeleteNote={handleDeleteNote}
@@ -891,14 +896,14 @@ export default function App() {
               />
             )}
             {activeTab === 'analytics' && <AnalyticsSection sessions={sessions} subjects={subjects} theme="dark" />}
-            {activeTab === 'curriculum' && <CurriculumSection curriculumSubjects={curriculumSubjects} onUpdateCurriculumSubjects={setCurriculumSubjects} />}
+            {activeTab === 'curriculum' && <CurriculumSection curriculumSubjects={curriculumSubjects} onUpdateCurriculumSubjects={handleUpdateCurriculum} sessions={sessions} />}
             {activeTab === 'revision' && <RevisionSection revisions={revisions} subjects={subjects} sessions={sessions} onUpdateRevisionDate={handleUpdateRevisionDate} />}
             {activeTab === 'history' && <HistorySection sessions={sessions} subjects={subjects} onDeleteSession={handleDeleteSession} onUpdateSession={handleUpdateSession} />}
             {activeTab === 'notes' && <NotesSection notes={notes} subjects={subjects} sessions={sessions} onAddNote={handleAddNote} onUpdateNote={handleUpdateNote} onDeleteNote={handleDeleteNote} />}
             {activeTab === 'goals' && <GoalsSection goals={goals} sessions={sessions} subjects={subjects} onAddGoal={handleAddGoal} onDeleteGoal={handleDeleteGoal} theme="dark" />}
             {activeTab === 'gamification' && <GamificationSection badges={badges} challenges={challenges} sessions={sessions} subjects={subjects} streak={streak} onAddChallenge={handleAddChallenge} onToggleChallenge={handleToggleChallenge} />}
             {activeTab === 'friends' && <FriendsSection currentUser={currentUser} sessions={sessions} onOpenAuth={() => setIsAuthModalOpen(true)} />}
-            {activeTab === 'timer' && <TimerSection subjects={subjects} timerSettings={timerSettings} onUpdateTimerSettings={setTimerSettings} onAddSession={handleAddSession} onNavigateToStats={() => setActiveTab('analytics')} />}
+            {activeTab === 'timer' && <TimerSection subjects={subjects} timerSettings={timerSettings} onUpdateTimerSettings={setTimerSettings} onAddSession={handleAddSession} onNavigateToStats={() => setActiveTab('analytics')} curriculumSubjects={curriculumSubjects} sessions={sessions} goals={goals} exams={exams} onOpenCurriculum={() => setActiveTab('curriculum')} />}
             {activeTab === 'calendar' && <CalendarSection sessions={sessions} subjects={subjects} exams={exams} onOpenLogModal={() => setIsLogModalOpen(true)} onAddExam={handleAddExam} onDeleteExam={handleDeleteExam} />}
             {activeTab === 'todos' && <TodosSection todos={todos} subjects={subjects} onAddTodo={handleAddTodo} onToggleTodo={handleToggleTodo} onDeleteTodo={handleDeleteTodo} />}
             {activeTab === 'links' && <LinksSection links={links} subjects={subjects} onAddLink={handleAddLink} onDeleteLink={handleDeleteLink} />}
@@ -927,6 +932,11 @@ export default function App() {
             onUpdateTimerSettings={setTimerSettings}
             onAddSession={handleAddSession}
             onNavigateToStats={() => setActiveTab('analytics')}
+            curriculumSubjects={curriculumSubjects}
+            sessions={sessions}
+            goals={goals}
+            exams={exams}
+            onOpenCurriculum={() => setActiveTab('curriculum')}
           />
         )}
         {activeTab === 'analytics' && (
@@ -935,7 +945,8 @@ export default function App() {
         {activeTab === 'curriculum' && (
           <CurriculumSection
             curriculumSubjects={curriculumSubjects}
-            onUpdateCurriculumSubjects={setCurriculumSubjects}
+            onUpdateCurriculumSubjects={handleUpdateCurriculum}
+            sessions={sessions}
           />
         )}
         {activeTab === 'revision' && (

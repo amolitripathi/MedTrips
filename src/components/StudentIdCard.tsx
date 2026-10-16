@@ -38,19 +38,19 @@ export const StudentIdCard: React.FC<StudentIdCardProps> = ({ sessions, sessions
   // Streak calculation
   const uniqueDates = Array.from(new Set(sessions.map(s => s.date))).sort().reverse();
   let currentStreak = 0;
-  const todayStr = new Date().toISOString().split('T')[0];
+  const todayStr = new Date().toLocaleDateString('en-CA');
   let checkDate = new Date();
 
   // Simple streak check
   for (let i = 0; i < 30; i++) {
-    const dStr = checkDate.toISOString().split('T')[0];
+    const dStr = checkDate.toLocaleDateString('en-CA');
     if (uniqueDates.includes(dStr)) {
       currentStreak++;
       checkDate.setDate(checkDate.getDate() - 1);
     } else if (i === 0) {
       // today might not be logged yet, check yesterday
       checkDate.setDate(checkDate.getDate() - 1);
-      const yesterdayStr = checkDate.toISOString().split('T')[0];
+      const yesterdayStr = checkDate.toLocaleDateString('en-CA');
       if (uniqueDates.includes(yesterdayStr)) {
         currentStreak++;
         checkDate.setDate(checkDate.getDate() - 1);

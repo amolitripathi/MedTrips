@@ -125,7 +125,7 @@ export const RevisionSection: React.FC<RevisionSectionProps> = ({ revisions, sub
               const dayStr = String(dayNum).padStart(2, '0');
               const dateKey = `${calendarYear}-${monthNum}-${dayStr}`;
               const dueCount = revisionCountsByDate[dateKey] || 0;
-              const isToday = dateKey === today.toISOString().split('T')[0];
+              const isToday = dateKey === today.toLocaleDateString('en-CA');
 
               return (
                 <div

@@ -36,7 +36,7 @@ export const GamificationSection: React.FC<GamificationSectionProps> = ({
       description: description.trim() || 'Custom study challenge',
       targetMinutes: targetHours * 60,
       daysDuration,
-      startDate: new Date().toISOString().split('T')[0],
+      startDate: new Date().toLocaleDateString('en-CA'),
     });
 
     setTitle('');

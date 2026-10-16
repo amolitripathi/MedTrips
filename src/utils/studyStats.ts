@@ -65,13 +65,13 @@ export const calculateStreaks = (sessions: StudySession[]): { currentStreak: num
   // Check backwards from today
   const today = new Date();
   let checkDate = new Date(today);
-  let dateStr = checkDate.toISOString().split('T')[0];
+  let dateStr = checkDate.toLocaleDateString('en-CA');
 
   // If today has no study yet, check if yesterday had study to maintain current streak
   if (!datesWithStudy.has(dateStr)) {
     const yesterday = new Date(today);
     yesterday.setDate(yesterday.getDate() - 1);
-    const yesterdayStr = yesterday.toISOString().split('T')[0];
+    const yesterdayStr = yesterday.toLocaleDateString('en-CA');
     if (!datesWithStudy.has(yesterdayStr)) {
       currentStreak = 0;
     } else {
@@ -85,7 +85,7 @@ export const calculateStreaks = (sessions: StudySession[]): { currentStreak: num
     if (datesWithStudy.has(dateStr)) {
       currentStreak++;
       checkDate.setDate(checkDate.getDate() - 1);
-      dateStr = checkDate.toISOString().split('T')[0];
+      dateStr = checkDate.toLocaleDateString('en-CA');
     } else {
       break;
     }
@@ -133,7 +133,7 @@ export const getDailyStats = (sessions: StudySession[], daysCount = 30, startOff
   for (let i = 0; i < daysCount; i++) {
     const d = new Date(windowStart);
     d.setDate(windowStart.getDate() + i);
-    const dateStr = d.toISOString().split('T')[0];
+    const dateStr = d.toLocaleDateString('en-CA');
     const formattedDate = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
     const minutes = sessionMap.get(dateStr) || 0;
     result.push({
@@ -166,7 +166,7 @@ export const getDailyStatsWithGaps = (sessions: StudySession[]): DailyStat[] => 
   current.setHours(0, 0, 0, 0);
 
   while (current <= endDate) {
-    const dateStr = current.toISOString().split('T')[0];
+    const dateStr = current.toLocaleDateString('en-CA');
     const formattedDate = current.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
     const minutes = sessionMap.get(dateStr) || 0;
     result.push({
@@ -385,7 +385,7 @@ export const getRevisionItems = (sessions: StudySession[], subjects: Subject[]):
     const paper = subject?.papers.find(p => p.id === lastSession.paperId);
 
     revisionStages.forEach(({ stage, offsetDays }) => {
-      const nextRevisionAt = new Date(lastSession.createdAt + offsetDays * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+      const nextRevisionAt = new Date(lastSession.createdAt + offsetDays * 24 * 60 * 60 * 1000).toLocaleDateString('en-CA');
       results.push({
         id: `${key}-${stage}-${lastSession.createdAt}`,
         subjectId: lastSession.subjectId,

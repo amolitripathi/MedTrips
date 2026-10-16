@@ -20,7 +20,7 @@ export const CalendarHeatmap: React.FC<CalendarHeatmapProps> = ({ sessions }) =>
   for (let i = daysCount - 1; i >= 0; i--) {
     const d = new Date(today);
     d.setDate(d.getDate() - i);
-    const dateStr = d.toISOString().split('T')[0];
+    const dateStr = d.toLocaleDateString('en-CA');
     const mins = sessionMap[dateStr] || 0;
 
     let level = 0;

@@ -20,7 +20,7 @@ export const LogSessionModal: React.FC<LogSessionModalProps> = ({
   const selectedSubject = subjects.find(s => s.id === selectedSubjectId);
   const [selectedPaperId, setSelectedPaperId] = useState(selectedSubject?.papers[0]?.id || '');
 
-  const [date, setDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [date, setDate] = useState(() => new Date().toLocaleDateString('en-CA'));
   const [startTime, setStartTime] = useState('08:00');
   const [hours, setHours] = useState<number>(1);
   const [minutes, setMinutes] = useState<number>(0);
@@ -148,7 +148,7 @@ export const LogSessionModal: React.FC<LogSessionModalProps> = ({
             <input
               type="date"
               value={date}
-              max={new Date().toISOString().split('T')[0]}
+              max={new Date().toLocaleDateString('en-CA')}
               onChange={(e) => setDate(e.target.value)}
               className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
               required

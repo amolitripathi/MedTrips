@@ -1,11 +1,22 @@
 import React, { useMemo, useState, useRef, useEffect } from 'react';
-import { BookOpen, CheckCircle2, Circle, GraduationCap, CalendarDays, ClipboardList, ChevronDown, Search, Plus, Trash2, FolderPlus } from 'lucide-react';
-import { CurriculumProgressEntry, CurriculumRevisionStatus, CurriculumSubject, CurriculumHeading, CurriculumTopic } from '../types';
+import { BookOpen, CheckCircle2, Circle, GraduationCap, CalendarDays, ClipboardList, ChevronDown, Search, Plus, Trash2, FolderPlus, Star, Repeat, Clock, Trophy, AlertCircle } from 'lucide-react';
+import { CurriculumProgressEntry, CurriculumRevisionStatus, CurriculumSubject, CurriculumHeading, CurriculumTopic, StudySession } from '../types';
+import { MILESTONES, MilestoneKey, topicMastery, isMastered, isInProgress, isRevisionDue, markRevised, summarize, minutesByTopic, REVISION_GAPS, REVISIONS_FOR_MASTERY } from '../utils/mastery';
 
 interface CurriculumSectionProps {
   curriculumSubjects: CurriculumSubject[];
   onUpdateCurriculumSubjects: (subjects: CurriculumSubject[]) => void;
+  sessions?: StudySession[];
 }
+
+const FILTERS: { id: string; label: string }[] = [
+  { id: 'all', label: 'All' },
+  { id: 'pending', label: 'Not read' },
+  { id: 'progress', label: 'In progress' },
+  { id: 'mastered', label: 'Mastered' },
+  { id: 'due', label: 'Revision due' },
+  { id: 'hy', label: 'High-yield' },
+];
 
 const statusOptions: CurriculumRevisionStatus[] = ['pending', 'on-time', 'late', 'completed'];
 const statusStyles: Record<CurriculumRevisionStatus, string> = {
@@ -17,7 +28,8 @@ const statusStyles: Record<CurriculumRevisionStatus, string> = {
 
 const SUBJECT_COLORS = ['#6366f1', '#3b82f6', '#06b6d4', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
 
-export const CurriculumSection: React.FC<CurriculumSectionProps> = ({ curriculumSubjects, onUpdateCurriculumSubjects }) => {
+export const CurriculumSection: React.FC<CurriculumSectionProps> = ({ curriculumSubjects, onUpdateCurriculumSubjects, sessions = [] }) => {
+  const topicMinutes = React.useMemo(() => minutesByTopic(sessions), [sessions]);
   const [filter, setFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [openSubjects, setOpenSubjects] = useState<Record<string, boolean>>({});
@@ -94,8 +106,8 @@ export const CurriculumSection: React.FC<CurriculumSectionProps> = ({ curriculum
   };
 
   const addTopic = (subjectId: string, headingId: string) => {
-    const topicName = newTopicByHeading[headingId]?.trim();
-    if (!topicName) return;
+    const names = (newTopicByHeading[headingId] ?? '').split(/[;\n]/).map((n) => n.trim()).filter(Boolean);
+    if (!names.length) return;
 
     const updated = curriculumSubjects.map((subject) => {
       if (subject.id === subjectId) {
@@ -103,17 +115,17 @@ export const CurriculumSection: React.FC<CurriculumSectionProps> = ({ curriculum
           ...subject,
           headings: subject.headings.map((heading) => {
             if (heading.id === headingId) {
-              const newTopic: CurriculumTopic = {
-                id: `topic-${Date.now()}`,
-                name: topicName,
+              const newTopics: CurriculumTopic[] = names.map((name, i) => ({
+                id: `topic-${Date.now()}-${i}`,
+                name,
                 studied: false,
                 attemptedMcq: false,
                 firstReadingDate: '',
                 nextRevisionDate: '',
                 revisionStatus: 'pending',
                 notes: '',
-              };
-              return { ...heading, topics: [...heading.topics, newTopic] };
+              }));
+              return { ...heading, topics: [...heading.topics, ...newTopics] };
             }
             return heading;
           }),
@@ -171,6 +183,20 @@ export const CurriculumSection: React.FC<CurriculumSectionProps> = ({ curriculum
     onUpdateCurriculumSubjects(updated);
   };
 
+  const patchTopic = (subjectId: string, headingId: string, topicId: string, fn: (t: CurriculumTopic) => CurriculumTopic) => {
+    onUpdateCurriculumSubjects(curriculumSubjects.map((s) => s.id !== subjectId ? s : {
+      ...s,
+      headings: s.headings.map((h) => h.id !== headingId ? h : { ...h, topics: h.topics.map((t) => t.id === topicId ? fn(t) : t) }),
+    }));
+  };
+
+  const toggleMilestone = (subjectId: string, headingId: string, topic: CurriculumTopic, key: MilestoneKey) =>
+    patchTopic(subjectId, headingId, topic.id, (t) => {
+      const next = { ...t, [key]: !t[key] } as CurriculumTopic;
+      if (key === 'studied' && next.studied && !next.firstReadingDate) next.firstReadingDate = new Date().toLocaleDateString('en-CA');
+      return next;
+    });
+
   const toggleTopic = (subjectId: string, headingId: string, topicId: string, field: 'studied' | 'attemptedMcq') => {
     const topic = curriculumSubjects
       .find((s) => s.id === subjectId)
@@ -197,6 +223,8 @@ export const CurriculumSection: React.FC<CurriculumSectionProps> = ({ curriculum
   };
 
   const stats = getTotalStats();
+  const allTopics = curriculumSubjects.flatMap((s) => s.headings.flatMap((h) => h.topics));
+  const overall = summarize(allTopics);
 
   return (
     <div className="space-y-6 text-white">
@@ -208,7 +236,7 @@ export const CurriculumSection: React.FC<CurriculumSectionProps> = ({ curriculum
               <GraduationCap className="w-5 h-5" />
               <h2 className="text-xl font-bold">Curriculum Tracker</h2>
             </div>
-            <p className="mt-2 text-sm text-slate-400">Organise your curriculum into subjects → headings → topics. Track read status, MCQ attempts, revision dates per topic.</p>
+            <p className="mt-2 text-sm text-slate-400">Organise your curriculum into subjects → headings → topics. Tick five milestones per topic to build a mastery score, star high-yield topics, and let spaced revision tell you what to review today.</p>
           </div>
           <div className="flex items-center gap-2 rounded-2xl border border-slate-700 bg-slate-950/70 px-3 py-2 text-sm text-slate-300">
             <Search className="w-4 h-4 text-slate-500" />
@@ -220,6 +248,32 @@ export const CurriculumSection: React.FC<CurriculumSectionProps> = ({ curriculum
             />
           </div>
         </div>
+      </div>
+
+      {/* Mastery overview */}
+      <div className="rounded-3xl border border-slate-800 bg-slate-900 p-5 shadow-xl">
+        <div className="flex flex-wrap items-center gap-6">
+          <div>
+            <div className="text-4xl font-bold text-white">{overall.avg}%</div>
+            <div className="text-xs text-slate-400">overall mastery across {overall.total} topics</div>
+          </div>
+          <div className="flex-1 min-w-[220px]">
+            <div className="h-2.5 rounded-full bg-slate-800 overflow-hidden"><div className="h-full bg-emerald-500" style={{ width: `${overall.avg}%` }} /></div>
+            <div className="mt-2 flex flex-wrap gap-4 text-xs text-slate-400">
+              <span className="flex items-center gap-1"><Trophy className="w-3.5 h-3.5 text-amber-400" /> {overall.mastered} mastered</span>
+              <span>{overall.inProgress} in progress</span>
+              <span>{overall.unstarted} not started</span>
+              <span className={overall.due ? 'flex items-center gap-1 font-semibold text-rose-300' : ''}>{overall.due ? <AlertCircle className="w-3.5 h-3.5" /> : null}{overall.due} {overall.due === 1 ? 'revision' : 'revisions'} due</span>
+            </div>
+          </div>
+        </div>
+        <div className="mt-4 flex flex-wrap gap-2">
+          {FILTERS.map((f) => (
+            <button key={f.id} onClick={() => setFilter(f.id)}
+              className={`rounded-full border px-3 py-1 text-xs font-semibold transition ${filter === f.id ? 'border-indigo-500 bg-indigo-600 text-white' : 'border-slate-700 text-slate-300 hover:bg-slate-800'}`}>{f.label}</button>
+          ))}
+        </div>
+        <div className="mt-3 text-[11px] text-slate-500">Weights: Read 20, Notes 15, MCQs 20, Assignment 20, Error review 15, plus 10 after {REVISIONS_FOR_MASTERY} revisions. Next revisions are scheduled {REVISION_GAPS.slice(0, 4).join(', ')} days apart and then longer.</div>
       </div>
 
       {/* Add Subject */}
@@ -264,6 +318,7 @@ export const CurriculumSection: React.FC<CurriculumSectionProps> = ({ curriculum
           const subjectTopics = subject.headings.flatMap((h) => h.topics);
           const studied = subjectTopics.filter((t) => t.studied).length;
           const total = subjectTopics.length;
+          const subSum = summarize(subjectTopics);
 
           return (
             <div key={subject.id} className="rounded-2xl border border-slate-800 bg-slate-900 overflow-hidden">
@@ -282,6 +337,12 @@ export const CurriculumSection: React.FC<CurriculumSectionProps> = ({ curriculum
                   <span className="text-xs text-slate-500">{total} topics</span>
                   {total > 0 && (
                     <span className="text-xs text-emerald-400">{studied}/{total} read</span>
+                  )}
+                  {total > 0 && (
+                    <span className="hidden sm:flex items-center gap-2 text-xs text-slate-400">
+                      <span className="inline-block h-1.5 w-24 rounded-full bg-slate-800 overflow-hidden"><span className="block h-full" style={{ width: `${subSum.avg}%`, background: subject.color }} /></span>
+                      {subSum.avg}%{subSum.due > 0 && <span className="font-semibold text-rose-300">{subSum.due} due</span>}
+                    </span>
                   )}
                 </div>
                 <div className="flex items-center gap-2">
@@ -323,6 +384,10 @@ export const CurriculumSection: React.FC<CurriculumSectionProps> = ({ curriculum
                       if (filter === 'all') return true;
                       if (filter === 'studied') return topic.studied;
                       if (filter === 'pending') return !topic.studied;
+                      if (filter === 'progress') return isInProgress(topic);
+                      if (filter === 'mastered') return isMastered(topic);
+                      if (filter === 'due') return isRevisionDue(topic);
+                      if (filter === 'hy') return Boolean(topic.highYield);
                       return topic.revisionStatus === filter;
                     });
 
@@ -352,7 +417,7 @@ export const CurriculumSection: React.FC<CurriculumSectionProps> = ({ curriculum
                                 value={newTopicByHeading[heading.id] ?? ''}
                                 onChange={(e) => setNewTopicByHeading((prev) => ({ ...prev, [heading.id]: e.target.value }))}
                                 onKeyDown={(e) => e.key === 'Enter' && addTopic(subject.id, heading.id)}
-                                placeholder="Add topic..."
+                                placeholder="Add topic (use ; to add several at once)"
                                 className="flex-1 rounded-xl border border-slate-700 bg-slate-900/60 px-3 py-1.5 text-sm text-white outline-none placeholder:text-slate-500 focus:border-slate-500"
                               />
                               <button
@@ -378,9 +443,9 @@ export const CurriculumSection: React.FC<CurriculumSectionProps> = ({ curriculum
                                     <div>Notes</div>
                                   </div>
                                   {filteredTopics.map((topic) => (
+                                    <div key={topic.id} className="border-b border-slate-800/50 last:border-0">
                                     <div
-                                      key={topic.id}
-                                      className="grid grid-cols-[2fr_70px_70px_130px_130px_120px_1fr] gap-2 px-2 py-2.5 border-b border-slate-800/50 last:border-0 hover:bg-slate-800/20 transition"
+                                      className="grid grid-cols-[2fr_70px_70px_130px_130px_120px_1fr] gap-2 px-2 pt-2.5 pb-1 hover:bg-slate-800/20 transition"
                                       onContextMenu={(e) => {
                                         e.preventDefault();
                                         setContextMenu({ x: e.clientX, y: e.clientY, type: 'topic', id: `${subject.id}::${heading.id}::${topic.id}` });
@@ -390,7 +455,12 @@ export const CurriculumSection: React.FC<CurriculumSectionProps> = ({ curriculum
                                         {topic.studied
                                           ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />
                                           : <Circle className="w-3.5 h-3.5 text-slate-600 flex-shrink-0" />}
-                                        <span className={`text-sm truncate ${topic.studied ? 'text-slate-400 line-through' : 'text-white'}`}>{topic.name}</span>
+                                        <span className={`text-sm truncate ${topic.studied ? 'text-slate-400 line-through' : 'text-white'}`} title={topic.name}>{topic.name}</span>
+                                        <button
+                                          onClick={() => patchTopic(subject.id, heading.id, topic.id, (t) => ({ ...t, highYield: !t.highYield }))}
+                                          aria-label={topic.highYield ? 'Remove high-yield star' : 'Mark as high-yield'}
+                                          className="flex-shrink-0"
+                                        ><Star className={`w-4 h-4 ${topic.highYield ? 'fill-amber-400 text-amber-400' : 'text-slate-600 hover:text-slate-400'}`} /></button>
                                       </div>
                                       <label className="flex items-center justify-center">
                                         <input
@@ -436,6 +506,32 @@ export const CurriculumSection: React.FC<CurriculumSectionProps> = ({ curriculum
                                         placeholder="Notes..."
                                         className="w-full rounded-lg border border-slate-700 bg-slate-900/80 px-2 py-1 text-xs text-white resize-none outline-none placeholder:text-slate-600"
                                       />
+                                    </div>
+                                    <div className="flex flex-wrap items-center gap-1.5 px-2 pb-2.5 pl-7">
+                                      <span className={`mr-1 rounded-md px-1.5 py-0.5 text-[11px] font-bold ${isMastered(topic) ? 'bg-emerald-500/20 text-emerald-300' : 'bg-slate-800 text-slate-300'}`}>{topicMastery(topic)}%</span>
+                                      {MILESTONES.map((m) => (
+                                        <button
+                                          key={m.key}
+                                          onClick={() => toggleMilestone(subject.id, heading.id, topic, m.key)}
+                                          className={`rounded-full border px-2.5 py-0.5 text-[11px] font-semibold transition ${topic[m.key] ? 'border-emerald-500/50 bg-emerald-500/20 text-emerald-300' : 'border-slate-700 text-slate-400 hover:bg-slate-800'}`}
+                                        >{m.label}</button>
+                                      ))}
+                                      <button
+                                        onClick={() => patchTopic(subject.id, heading.id, topic.id, markRevised)}
+                                        className={`flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[11px] font-semibold transition ${isRevisionDue(topic) ? 'border-rose-500/60 bg-rose-500/15 text-rose-300' : (topic.revisionCount ?? 0) >= REVISIONS_FOR_MASTERY ? 'border-emerald-500/50 bg-emerald-500/20 text-emerald-300' : 'border-slate-700 text-slate-400 hover:bg-slate-800'}`}
+                                        title="Log a revision today and schedule the next one"
+                                      ><Repeat className="w-3 h-3" />Revised ×{topic.revisionCount ?? 0}{isRevisionDue(topic) ? ' - due' : ''}</button>
+                                      {(topic.revisionCount ?? 0) > 0 && (
+                                        <button
+                                          onClick={() => patchTopic(subject.id, heading.id, topic.id, (t) => ({ ...t, revisionCount: Math.max(0, (t.revisionCount ?? 0) - 1) }))}
+                                          className="rounded-full border border-slate-700 px-2 py-0.5 text-[11px] text-slate-500 hover:bg-slate-800"
+                                          aria-label="Undo one revision"
+                                        >-1</button>
+                                      )}
+                                      {topicMinutes[topic.id] > 0 && (
+                                        <span className="ml-auto flex items-center gap-1 text-[11px] text-slate-400"><Clock className="w-3 h-3" />{Math.floor(topicMinutes[topic.id] / 60)}h {topicMinutes[topic.id] % 60}m studied</span>
+                                      )}
+                                    </div>
                                     </div>
                                   ))}
                                 </div>
